@@ -99,7 +99,7 @@
           <button class="panel-toggle" id="toggleLeft" title="Collapse">‹</button>
         </div>
 
-        <!-- BOOK DETAILS — FIX #5 -->
+        <!-- BOOK DETAILS -->
         <div class="section-block">
           <div class="section-block-header" onclick="toggleBlock('metaBody')"><span>📝 Book Details</span><span class="chevron">▾</span></div>
           <div class="section-block-body" id="metaBody">
@@ -117,7 +117,6 @@
             <input type="text" id="isbnNum" placeholder="e.g. 978-0-000000-00-0" />
             <label>Edition</label>
             <input type="text" id="editionNum" placeholder="e.g. First Edition" />
-            <!-- FIX #6: Cover image -->
             <label>Cover Image</label>
             <input type="file" id="coverImage" accept="image/*" onchange="onCoverImageChange(event)" />
             <div id="coverPreviewWrap" style="display:none;margin-top:6px;">
@@ -127,12 +126,21 @@
           </div>
         </div>
 
-        <!-- FRONT MATTER — FIX #7: editable sections -->
+        <!-- FRONT MATTER -->
         <div class="section-block">
           <div class="section-block-header" onclick="toggleBlock('frontMatterBody')"><span>📄 Front Matter</span><span class="chevron">▾</span></div>
           <div class="section-block-body" id="frontMatterBody">
             <label class="toggle-item"><input type="checkbox" id="hasTitlePage" checked /> Title Page <small>(auto)</small></label>
-            <label class="toggle-item"><input type="checkbox" id="hasCopyrightPage" /> Copyright Page <small>(auto)</small></label>
+
+            <!-- COPYRIGHT — editable with auto-fill -->
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasCopyrightPage" onchange="toggleCopyrightEditor(this.checked)" /> Copyright Page</label>
+              <div class="front-sec-wrap" id="copyrightEditorWrap">
+                <div class="front-editor" id="copyrightEditor" contenteditable="true" data-placeholder="Copyright page content (click Auto-fill to generate from book details)..."></div>
+                <button onclick="autofillCopyrightEditor()" style="margin-top:5px;width:100%;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:0.75rem;font-family:var(--font-mono);">↺ Auto-fill from Book Details</button>
+              </div>
+            </div>
+
             <!-- editable front matter items -->
             <div class="front-matter-item">
               <label class="toggle-item"><input type="checkbox" id="hasDedication" onchange="toggleFrontEditor('dedicationEditorWrap',this.checked)" /> Dedication</label>
@@ -168,7 +176,7 @@
           </div>
         </div>
 
-        <!-- BACK MATTER — FIX #7 -->
+        <!-- BACK MATTER -->
         <div class="section-block">
           <div class="section-block-header" onclick="toggleBlock('backMatterBody')"><span>📋 Back Matter</span><span class="chevron">▾</span></div>
           <div class="section-block-body" id="backMatterBody">
@@ -203,11 +211,17 @@
                 <div class="front-editor" id="aboutEditor" contenteditable="true" data-placeholder="Write your bio here..."></div>
               </div>
             </div>
-            <label class="toggle-item"><input type="checkbox" id="hasColophon" /> Colophon <small>(auto)</small></label>
+            <!-- COLOPHON — editable, no auto watermark -->
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasColophon" onchange="toggleFrontEditor('colophonEditorWrap',this.checked)" /> Colophon</label>
+              <div class="front-sec-wrap" id="colophonEditorWrap">
+                <div class="front-editor" id="colophonEditor" contenteditable="true" data-placeholder="Write your colophon here (printing info, designer credits, etc.)..."></div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- UNITS & CHAPTERS — FIX #3 #4 -->
+        <!-- UNITS & CHAPTERS -->
         <div class="section-block">
           <div class="section-block-header" onclick="toggleBlock('chaptersBody')"><span>🗂️ Units & Chapters</span><span class="chevron">▾</span></div>
           <div class="section-block-body" id="chaptersBody">
@@ -223,7 +237,7 @@
           </div>
         </div>
 
-        <!-- PAGE SETTINGS — FIX #8 #9 -->
+        <!-- PAGE SETTINGS -->
         <div class="section-block">
           <div class="section-block-header" onclick="toggleBlock('pageSettingsBody')"><span>⚙️ Page Settings</span><span class="chevron">▾</span></div>
           <div class="section-block-body" id="pageSettingsBody">
@@ -249,13 +263,12 @@
             <select id="marginSize">
               <option value="15">Narrow (15mm)</option><option value="20" selected>Normal (20mm)</option><option value="25">Wide (25mm)</option>
             </select>
-            <!-- FIX #8: All heading styles work correctly -->
             <label>Chapter Heading Style</label>
             <select id="chapterStyle">
               <option value="classic" selected>Classic (CHAPTER N + Title)</option>
               <option value="modern">Modern (Large Number + Title)</option>
               <option value="minimal">Minimal (Title Only, centered)</option>
-              <option value="ornate">Ornate (✦ Decorated ✦)</option>
+              <option value="ornate">Ornate (* Decorated *)</option>
             </select>
             <label>Color Theme</label>
             <select id="colorTheme">
@@ -265,7 +278,6 @@
               <option value="forest">Forest Green</option>
             </select>
             <label class="toggle-item" style="margin-top:6px;"><input type="checkbox" id="showPageNumbers" checked /> Show Page Numbers</label>
-            <!-- FIX #9: Even/odd running header description -->
             <label class="toggle-item">
               <input type="checkbox" id="showRunningHeader" checked /> Running Headers <small>(Even: Book | Odd: Chapter)</small>
             </label>
@@ -306,7 +318,7 @@
           </div>
         </div>
 
-        <!-- TOOLBAR — FIX #1: SVG icons for alignment, all inside proper bounds -->
+        <!-- TOOLBAR -->
         <div class="editor-toolbar" id="editorToolbar">
           <div class="toolbar-group">
             <select class="toolbar-select ts-style" title="Style" onchange="execFormat('formatBlock',this.value);this.value=''">
@@ -339,7 +351,6 @@
             <button class="tool-btn tool-sm" title="Subscript" onclick="execFormat('subscript')">x₂</button>
           </div>
           <div class="toolbar-divider"></div>
-          <!-- FIX #1: Alignment with inline SVG, all contained within 28x28 -->
           <div class="toolbar-group">
             <button class="tool-btn" title="Align Left" onclick="execFormat('justifyLeft')">
               <svg width="13" height="12" viewBox="0 0 13 12"><rect y="0" width="13" height="2" rx="1" fill="currentColor"/><rect y="3.5" width="9" height="2" rx="1" fill="currentColor"/><rect y="7" width="13" height="2" rx="1" fill="currentColor"/><rect y="10.5" width="7" height="1.5" rx="0.75" fill="currentColor"/></svg>
@@ -371,7 +382,6 @@
           </div>
           <div class="toolbar-divider"></div>
           <div class="toolbar-group">
-            <!-- FIX #1: Color pickers properly wrapped -->
             <div class="color-wrap" title="Text Color">
               <span class="color-label">A</span>
               <input type="color" value="#000000" onchange="execFormat('foreColor',this.value)" />
@@ -403,7 +413,8 @@
                   <div class="step"><span class="step-num">3</span><div><strong>Add Chapters</strong><p>Add units (optional) and chapters. Click a chapter tab to start writing or paste your content.</p></div></div>
                   <div class="step"><span class="step-num">4</span><div><strong>Export</strong><p>Choose PDF or EPUB and click Generate. Your formatted book downloads instantly.</p></div></div>
                 </div>
-                <button class="btn-primary" onclick="addChapter(null);switchTab('ch_0')">Start Your First Chapter →</button>
+                <!-- FIX B3: use startFirstChapter() instead of hardcoded switchTab('ch_0') -->
+                <button class="btn-primary" onclick="startFirstChapter()">Start Your First Chapter →</button>
               </div>
             </div>
           </div>
@@ -454,7 +465,7 @@
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I write in Hindi or other Indian languages?<span class="faq-arrow">▾</span></button><div class="faq-a">Yes! The editor fully supports Hindi, Bengali, Tamil, Gujarati, and any Unicode language. Content is preserved correctly in both PDF and EPUB exports.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How does the cover image work?<span class="faq-arrow">▾</span></button><div class="faq-a">Upload a cover image in Book Details. It appears as a full-page first page in your PDF — no headers, no page numbers, just the cover. Professional publishing standard.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I paste my already-written manuscript?<span class="faq-arrow">▾</span></button><div class="faq-a">Absolutely. Each chapter has a rich text editor where you can paste content from Word, Google Docs, or any source. Formatting is preserved.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do Running Headers work?<span class="faq-arrow">▾</span></button><div class="faq-a">When enabled: even-numbered pages show your book title, odd-numbered pages show the current chapter title. Pages with Unit headings have no header at all.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do Running Headers work?<span class="faq-arrow">▾</span></button><div class="faq-a">When enabled: even-numbered pages show your book title, odd-numbered pages show the current chapter title. Title page, copyright, TOC, and unit pages have no header.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">What is a "Unit" in the formatter?<span class="faq-arrow">▾</span></button><div class="faq-a">Units are large groupings (called "Parts") that contain multiple chapters. E.g. "Unit I – The Beginning" then Chapter 1, 2, 3. Completely optional.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I use this on mobile?<span class="faq-arrow">▾</span></button><div class="faq-a">Yes! AuthorPro is fully responsive and works on phones and tablets. The layout adapts to smaller screens automatically.</div></div>
     </div>
