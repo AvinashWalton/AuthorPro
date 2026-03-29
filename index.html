@@ -243,8 +243,8 @@
           <div class="section-block-body" id="pageSettingsBody">
             <label>Page Size</label>
             <select id="pageSize">
-              <option value="A4">A4 (210×297mm)</option>
-              <option value="A5" selected>A5 (148×210mm)</option>
+              <option value="A4" selected>A4 (210×297mm)</option>
+              <option value="A5">A5 (148×210mm)</option>
               <option value="Letter">Letter (8.5×11in)</option>
               <option value="6x9">6×9 inch (Trade)</option>
               <option value="5x8">5×8 inch (Pocket)</option>
@@ -375,7 +375,8 @@
           <div class="toolbar-divider"></div>
           <div class="toolbar-group">
             <button class="tool-btn" title="Insert Link" onclick="insertLink()">🔗</button>
-            <button class="tool-btn" title="Insert Image URL" onclick="insertImageUrl()">🖼️</button>
+            <button class="tool-btn" title="Insert Image URL" onclick="insertImageUrl()">🌐</button>
+            <button class="tool-btn" title="Upload Image from Device" onclick="insertImageUpload()">🖼️</button>
             <button class="tool-btn" title="Insert Table" onclick="insertTable()">⊞</button>
             <button class="tool-btn" title="Horizontal Rule" onclick="execFormat('insertHorizontalRule')">—</button>
             <button class="tool-btn" title="Page Break" onclick="insertPageBreak()">⏎</button>
@@ -388,7 +389,7 @@
             </div>
             <div class="color-wrap" title="Highlight">
               <span class="color-label" style="font-size:1rem;">▌</span>
-              <input type="color" value="#ffff00" onchange="execFormat('hiliteColor',this.value)" />
+              <input type="color" value="#ffff00" onchange="execFormat('backColor',this.value)" />
             </div>
           </div>
           <div class="toolbar-divider"></div>
@@ -516,6 +517,7 @@
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
