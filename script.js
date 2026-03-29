@@ -336,6 +336,22 @@ function insertImageUrl() {
   const url = prompt('Enter image URL:');
   if (url) execFormat('insertImage', url);
 }
+// Fix: Upload image from device directly into editor
+function insertImageUpload() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      execFormat('insertImage', ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
 function insertTable() {
   const rows = parseInt(prompt('Number of rows:', '3') || '3');
   const cols = parseInt(prompt('Number of columns:', '3') || '3');
@@ -501,6 +517,66 @@ async function exportBook() {
   document.getElementById('exportSpinner').style.display = 'none';
 }
 
+// ===== HTML2CANVAS HELPER — renders HTML (including Hindi/Unicode) to PDF image =====
+async function addHtmlContentToPDF(doc, htmlContent, pw, ph, margin, startY, getTopYFn, drawPageNumFn, newPageFn, drawHeaderFn) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = htmlContent;
+  if (!tmp.innerText.trim()) return startY;
+
+  const pxPerMm = 3.7795275591;
+  const renderW = Math.round((pw - 2 * margin) * pxPerMm);
+
+  const div = document.createElement('div');
+  div.style.cssText = [
+    'position:fixed', 'left:-99999px', 'top:0',
+    `width:${renderW}px`,
+    "font-family:'Noto Serif','Noto Sans',Georgia,'Times New Roman',serif",
+    'font-size:13px', 'line-height:1.75', 'color:#222',
+    'background:white', 'padding:0', 'margin:0', 'word-wrap:break-word'
+  ].join(';');
+  div.innerHTML = htmlContent;
+  document.body.appendChild(div);
+
+  try {
+    const canvas = await html2canvas(div, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
+    document.body.removeChild(div);
+
+    const imgW    = pw - 2 * margin;
+    const totalH  = (canvas.height / canvas.width) * imgW;
+    const pageMax = ph - margin - 14;
+
+    let rendered = 0;
+    let y = startY;
+
+    while (rendered < totalH - 0.5) {
+      const avail = pageMax - y;
+      if (avail <= 2) {
+        drawPageNumFn(); newPageFn(); y = getTopYFn(); drawHeaderFn();
+      }
+      const chunk = Math.min(avail, totalH - rendered);
+      const srcY  = Math.round((rendered / totalH) * canvas.height);
+      const srcH  = Math.round((chunk / totalH) * canvas.height);
+      if (srcH < 1) break;
+
+      const sl = document.createElement('canvas');
+      sl.width = canvas.width; sl.height = srcH;
+      sl.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+      doc.addImage(sl.toDataURL('image/jpeg', 0.92), 'JPEG', margin, y, imgW, chunk);
+
+      rendered += chunk;
+      y += chunk;
+      if (rendered < totalH - 0.5) {
+        drawPageNumFn(); newPageFn(); y = getTopYFn(); drawHeaderFn();
+      }
+    }
+    return y;
+  } catch (err) {
+    if (document.body.contains(div)) document.body.removeChild(div);
+    console.warn('html2canvas failed, falling back to plain text', err);
+    return startY;
+  }
+}
+
 // ===== PDF EXPORT =====
 async function exportPDF() {
   const { jsPDF } = window.jspdf;
@@ -637,16 +713,11 @@ async function exportPDF() {
     suppressHeader = true; // F1
     let cy = getTopY();
     const copyrightEditorEl = document.getElementById('copyrightEditor');
-    const copyrightText = htmlToPlainText(copyrightEditorEl ? copyrightEditorEl.innerHTML : '');
-    if (copyrightText.trim()) {
-      // F3: Use user's editable content
-      const paras = copyrightText.split(/\n\n+/).filter(p => p.trim());
-      for (const para of paras) {
-        cy = writeLines(para.trim(), margin, cy, { size: 9 });
-        cy += 2;
-      }
+    const copyrightHtml = copyrightEditorEl ? copyrightEditorEl.innerHTML : '';
+    if (copyrightHtml.trim()) {
+      cy = await addHtmlContentToPDF(doc, copyrightHtml, pw, ph, margin, cy, getTopY, drawPageNum, () => newPage(), () => drawRunningHeader());
     } else {
-      // Fallback if editor is empty — F4: no watermark
+      // Fallback if editor is empty
       const lines = [
         `Copyright © ${year} ${author || 'Author'}`,
         'All rights reserved.',
@@ -654,7 +725,7 @@ async function exportPDF() {
         isbn ? `ISBN: ${isbn}` : null,
         '',
         'No part of this publication may be reproduced without written permission.',
-        publisher ? `\nPublished by ${publisher}` : null,
+        publisher ? `Published by ${publisher}` : null,
       ].filter(l => l !== null);
       for (const line of lines) {
         cy = writeLines(line, margin, cy, { size: 9 });
@@ -686,10 +757,9 @@ async function exportPDF() {
     doc.text(sec.label, pw / 2, sy, { align:'center' });
     sy += 10;
     const editorEl = document.getElementById(sec.edId);
-    const content = htmlToPlainText(editorEl ? editorEl.innerHTML : '');
-    for (const para of content.split(/\n\n+/).filter(p => p.trim())) {
-      sy = writeLines(para.trim(), margin, sy);
-      sy += lineH * 0.3;
+    const rawHtml = editorEl ? editorEl.innerHTML : '';
+    if (rawHtml.trim()) {
+      sy = await addHtmlContentToPDF(doc, rawHtml, pw, ph, margin, sy, getTopY, drawPageNum, newPage, () => drawRunningHeader());
     }
     drawPageNum();
   }
@@ -818,12 +888,9 @@ async function exportPDF() {
       cy += 10;
     }
 
-    // Chapter content
-    const plainText = htmlToPlainText(ch.content || '');
-    doc.setTextColor('#222222');
-    for (const para of plainText.split(/\n\n+/).filter(p => p.trim())) {
-      cy = writeLines(para.replace(/\n/g, ' ').trim(), margin, cy);
-      cy += lineH * 0.3;
+    // Chapter content — html2canvas for Hindi/Unicode + rich formatting support
+    if (ch.content && ch.content.trim()) {
+      cy = await addHtmlContentToPDF(doc, ch.content, pw, ph, margin, cy, getTopY, drawPageNum, () => newPage(), () => drawRunningHeader());
     }
     drawPageNum();
   }
@@ -849,10 +916,9 @@ async function exportPDF() {
     doc.text(sec.label, pw / 2, sy, { align:'center' });
     sy += 10;
     const editorEl = document.getElementById(sec.edId);
-    const content = htmlToPlainText(editorEl ? editorEl.innerHTML : '');
-    for (const para of content.split(/\n\n+/).filter(p => p.trim())) {
-      sy = writeLines(para.trim(), margin, sy);
-      sy += lineH * 0.3;
+    const rawHtml = editorEl ? editorEl.innerHTML : '';
+    if (rawHtml.trim()) {
+      sy = await addHtmlContentToPDF(doc, rawHtml, pw, ph, margin, sy, getTopY, drawPageNum, () => newPage(), () => drawRunningHeader());
     }
     drawPageNum();
   }
@@ -883,12 +949,8 @@ async function exportPDF() {
     drawRunningHeader();
     let col = getTopY();
     const colEditor = document.getElementById('colophonEditor');
-    const colText = htmlToPlainText(colEditor ? colEditor.innerHTML : '');
-    if (colText.trim()) {
-      for (const para of colText.split(/\n\n+/).filter(p => p.trim())) {
-        col = writeLines(para.trim(), margin, col, { size: 9, style: 'normal' });
-        col += lineH * 0.3;
-      }
+    if (colEditor && colEditor.innerHTML.trim()) {
+      col = await addHtmlContentToPDF(doc, colEditor.innerHTML, pw, ph, margin, col, getTopY, drawPageNum, () => newPage(), () => drawRunningHeader());
     }
     drawPageNum();
   }
