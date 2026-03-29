@@ -1,5 +1,15 @@
 /* ============================================================
-   AuthorPro – script.js  v2 (All 10 fixes applied)
+   AuthorPro – script.js  v2.2
+   Bug Fixes:
+   B1: updateChapterTitle no longer calls renderChapterList() → no focus loss
+   B2: Cover image type auto-detected (PNG/JPEG/GIF/WEBP)
+   B3: startFirstChapter() — no hardcoded tab ID
+   New fixes:
+   F1: Title page, Copyright page, TOC page — NO running header
+   F2: Ornate style — ASCII-safe chars + doc.line() (no broken Unicode)
+   F3: Copyright page is editable with auto-fill button
+   F4: Watermark removed permanently from all PDF/EPUB output
+   F5: Colophon is now editable (no auto-text)
    ============================================================ */
 'use strict';
 
@@ -11,7 +21,7 @@ const state = {
   autoSaveTimer: null,
   chapterCounter: 0,
   unitCounter: 0,
-  coverImageDataUrl: null,  // FIX #6
+  coverImageDataUrl: null,
 };
 
 // ===== INIT =====
@@ -39,7 +49,7 @@ function toggleBlock(bodyId) {
   if (header) header.classList.toggle('collapsed', !isHidden);
 }
 
-// ===== FIX #7: Front/back matter inline editors =====
+// ===== FRONT/BACK MATTER EDITORS =====
 function toggleFrontEditor(wrapId, show) {
   const wrap = document.getElementById(wrapId);
   if (!wrap) return;
@@ -50,7 +60,34 @@ function toggleFrontEditor(wrapId, show) {
   }
 }
 
-// ===== FIX #6: Cover image =====
+// F3: Copyright editor — shows editor and auto-fills if empty
+function toggleCopyrightEditor(show) {
+  toggleFrontEditor('copyrightEditorWrap', show);
+  if (show) {
+    const editor = document.getElementById('copyrightEditor');
+    if (editor && !editor.innerHTML.trim()) {
+      autofillCopyrightEditor();
+    }
+  }
+}
+
+// F3: Auto-fill copyright content from book details
+function autofillCopyrightEditor() {
+  const editor = document.getElementById('copyrightEditor');
+  if (!editor) return;
+  const author    = document.getElementById('authorName').value || 'Author';
+  const year      = document.getElementById('pubYear').value || new Date().getFullYear();
+  const publisher = document.getElementById('publisherName').value || '';
+  const isbn      = document.getElementById('isbnNum').value || '';
+  let html = `<p>Copyright &copy; ${year} ${author}</p>`;
+  html += `<p>All rights reserved.</p>`;
+  html += `<p>No part of this publication may be reproduced, distributed, or transmitted in any form without the prior written permission of the publisher.</p>`;
+  if (publisher) html += `<p>Published by ${publisher}</p>`;
+  if (isbn)      html += `<p>ISBN: ${isbn}</p>`;
+  editor.innerHTML = html;
+}
+
+// ===== COVER IMAGE =====
 function onCoverImageChange(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -70,6 +107,15 @@ function removeCover() {
   document.getElementById('coverPreviewWrap').style.display = 'none';
   document.getElementById('coverPreview').src = '';
   scheduleAutoSave();
+}
+
+// B2: Auto-detect image type
+function getImageType(dataUrl) {
+  if (!dataUrl) return 'JPEG';
+  if (dataUrl.startsWith('data:image/png'))  return 'PNG';
+  if (dataUrl.startsWith('data:image/gif'))  return 'GIF';
+  if (dataUrl.startsWith('data:image/webp')) return 'WEBP';
+  return 'JPEG';
 }
 
 // ===== UNIT MODE =====
@@ -125,6 +171,13 @@ function updateUnitTitle(unitId, val) {
 }
 
 // ===== CHAPTERS =====
+
+// B3: Safe helper — welcome button uses this
+function startFirstChapter() {
+  const ch = addChapter(null);
+  switchTab(ch.id);
+}
+
 function addChapter(unitId) {
   const id = 'ch_' + (state.chapterCounter++);
   const ch = { id, title: 'Chapter ' + (state.chapters.length + 1), content: '', unitId: unitId || null };
@@ -179,7 +232,6 @@ function chapterItemHTML(ch) {
   return `
     <div class="chapter-item${isActive ? ' active' : ''}" id="chItem_${ch.id}" onclick="switchTab('${ch.id}')">
       <span class="chapter-num">Ch.${chIdx}</span>
-      <!-- FIX #4: Editable title directly in sidebar -->
       <input type="text" class="chapter-title-edit" value="${escHtml(ch.title)}"
         onclick="event.stopPropagation()"
         oninput="updateChapterTitle('${ch.id}', this.value)"
@@ -209,14 +261,12 @@ function createEditorTab(ch) {
     <div class="rich-editor-wrap">
       <div class="chapter-heading-bar">
         <span class="ch-heading-label">Chapter Title:</span>
-        <!-- FIX #2: title input with forced dark color -->
         <input class="ch-title-input" type="text" placeholder="Enter chapter title…"
           value="${escHtml(ch.title)}"
           oninput="updateChapterTitle('${ch.id}', this.value)"
           style="color:#1a1228 !important;"
         />
       </div>
-      <!-- FIX #10: lang attribute for Hindi/Unicode support -->
       <div class="rich-editor" id="editor_${ch.id}"
         contenteditable="true"
         lang="hi"
@@ -242,19 +292,21 @@ function switchTab(id) {
   updateWordCount();
 }
 
+// B1: NO renderChapterList() — only surgical DOM updates to prevent focus loss
 function updateChapterTitle(id, val) {
   const ch = state.chapters.find(c => c.id === id);
   if (!ch) return;
   ch.title = val;
+
   const tabBtn = document.querySelector(`[data-tab="${id}"]`);
   if (tabBtn) { tabBtn.textContent = val || 'Ch.'; tabBtn.title = val; }
-  // sync sidebar input
+
   const sideInput = document.querySelector(`#chItem_${id} .chapter-title-edit`);
   if (sideInput && document.activeElement !== sideInput) sideInput.value = val;
-  // sync heading bar input
+
   const headInput = document.querySelector(`#tab-${id} .ch-title-input`);
   if (headInput && document.activeElement !== headInput) headInput.value = val;
-  renderChapterList();
+
   scheduleAutoSave();
 }
 
@@ -326,8 +378,8 @@ function showWordCount() {
     <div class="stat-item"><div class="stat-num">${state.units.length}</div><div class="stat-label">Units</div></div>
     <div class="stat-item"><div class="stat-num">${totalWords.toLocaleString()}</div><div class="stat-label">Total Words</div></div>
     <div class="stat-item"><div class="stat-num">${totalChars.toLocaleString()}</div><div class="stat-label">Characters</div></div>
-    <div class="stat-item"><div class="stat-num">${Math.ceil(totalWords/250)}</div><div class="stat-label">Est. Pages</div></div>
-    <div class="stat-item"><div class="stat-num">${Math.ceil(totalWords/70000*100)}%</div><div class="stat-label">Novel Progress</div></div>
+    <div class="stat-item"><div class="stat-num">${Math.ceil(totalWords / 250)}</div><div class="stat-label">Est. Pages</div></div>
+    <div class="stat-item"><div class="stat-num">${Math.ceil(totalWords / 70000 * 100)}%</div><div class="stat-label">Novel Progress</div></div>
   `;
   document.getElementById('wordCountModal').classList.add('active');
 }
@@ -350,78 +402,71 @@ function togglePreview() {
 function buildPreview() {
   const previewBody = document.getElementById('previewBody');
   const bookTitle = document.getElementById('bookTitle').value || 'Untitled Book';
-  const subtitle = document.getElementById('bookSubtitle').value;
-  const author = document.getElementById('authorName').value || 'Author';
+  const subtitle  = document.getElementById('bookSubtitle').value;
+  const author    = document.getElementById('authorName').value || 'Author';
   const showHeader = document.getElementById('showRunningHeader').checked;
   let html = '';
   let pageNum = 0;
 
-  function pageWrap(content, chapterTitle, isUnit = false) {
+  // F1: suppressHeader = true for title/copyright/TOC pages
+  function pageWrap(content, chapterTitle, suppressHeader = false) {
     pageNum++;
     const isEven = pageNum % 2 === 0;
-    // FIX #9: unit pages = no header; even = book title; odd = chapter title
     let headerBar = '';
-    if (showHeader && !isUnit) {
-      if (isEven) {
-        headerBar = `<div class="preview-header-bar"><span>${escHtml(bookTitle)}</span><span></span></div>`;
-      } else {
-        headerBar = `<div class="preview-header-bar"><span></span><span>${escHtml(chapterTitle)}</span></div>`;
-      }
+    if (showHeader && !suppressHeader) {
+      headerBar = isEven
+        ? `<div class="preview-header-bar"><span>${escHtml(bookTitle)}</span><span></span></div>`
+        : `<div class="preview-header-bar"><span></span><span>${escHtml(chapterTitle)}</span></div>`;
     }
     return `<div class="preview-page">${headerBar}${content}</div>`;
   }
 
-  // Cover
   if (state.coverImageDataUrl) {
     html += `<div class="preview-page" style="padding:0;overflow:hidden;"><img src="${state.coverImageDataUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Cover" /></div>`;
     pageNum++;
   }
-  // Title page
   if (document.getElementById('hasTitlePage').checked) {
-    html += pageWrap(`<div class="preview-title-page"><div class="preview-book-title">${escHtml(bookTitle)}</div>${subtitle ? `<div class="preview-book-subtitle">${escHtml(subtitle)}</div>` : ''}<div class="preview-author">— ${escHtml(author)} —</div></div>`, 'Title Page');
+    html += pageWrap(`<div class="preview-title-page"><div class="preview-book-title">${escHtml(bookTitle)}</div>${subtitle ? `<div class="preview-book-subtitle">${escHtml(subtitle)}</div>` : ''}<div class="preview-author">— ${escHtml(author)} —</div></div>`, 'Title Page', true);
   }
-  // Front matter
+  if (document.getElementById('hasCopyrightPage').checked) {
+    const edEl = document.getElementById('copyrightEditor');
+    html += pageWrap(`<div class="preview-chapter-title">Copyright</div><div>${edEl ? edEl.innerHTML : ''}</div>`, 'Copyright', true);
+  }
   const frontSecs = [
-    { key:'hasDedication', label:'Dedication', edId:'dedicationEditor' },
-    { key:'hasForeword', label:'Foreword', edId:'forewordEditor' },
-    { key:'hasPreface', label:'Preface', edId:'prefaceEditor' },
-    { key:'hasAcknowledgements', label:'Acknowledgements', edId:'ackEditor' },
-    { key:'hasIntroduction', label:'Introduction', edId:'introEditor' },
+    { key:'hasDedication',      label:'Dedication',       edId:'dedicationEditor' },
+    { key:'hasForeword',        label:'Foreword',         edId:'forewordEditor' },
+    { key:'hasPreface',         label:'Preface',          edId:'prefaceEditor' },
+    { key:'hasAcknowledgements',label:'Acknowledgements', edId:'ackEditor' },
+    { key:'hasIntroduction',    label:'Introduction',     edId:'introEditor' },
   ];
   frontSecs.forEach(sec => {
-    if (document.getElementById(sec.key) && document.getElementById(sec.key).checked) {
-      const editorEl = document.getElementById(sec.edId);
-      const content = editorEl ? editorEl.innerHTML : '';
-      html += pageWrap(`<div class="preview-chapter-title">${escHtml(sec.label)}</div><div>${content || `<p><em>Content for ${sec.label}</em></p>`}</div>`, sec.label);
-    }
+    if (!document.getElementById(sec.key)?.checked) return;
+    const edEl = document.getElementById(sec.edId);
+    html += pageWrap(`<div class="preview-chapter-title">${escHtml(sec.label)}</div><div>${edEl ? edEl.innerHTML : ''}</div>`, sec.label);
   });
-  // TOC
   if (document.getElementById('hasTOC').checked) {
     let toc = '<div class="preview-chapter-title">Table of Contents</div><ul>';
-    state.chapters.forEach((ch, i) => { toc += `<li>Chapter ${i+1} — ${escHtml(ch.title)}</li>`; });
+    state.chapters.forEach((ch, i) => { toc += `<li>Chapter ${i + 1} — ${escHtml(ch.title)}</li>`; });
     toc += '</ul>';
-    html += pageWrap(toc, 'Table of Contents');
+    html += pageWrap(toc, 'Table of Contents', true);
   }
-  // Chapters
   state.chapters.forEach((ch, i) => {
-    html += pageWrap(`<div class="preview-chapter-num">Chapter ${i+1}</div><div class="preview-chapter-title">${escHtml(ch.title || 'Untitled')}</div><div>${ch.content || '<p><em>No content yet</em></p>'}</div>`, ch.title || `Chapter ${i+1}`);
+    html += pageWrap(`<div class="preview-chapter-num">Chapter ${i + 1}</div><div class="preview-chapter-title">${escHtml(ch.title || 'Untitled')}</div><div>${ch.content || '<p><em>No content yet</em></p>'}</div>`, ch.title || `Chapter ${i + 1}`);
   });
-  // Back matter
   const backSecs = [
-    { key:'hasEpilogue', label:'Epilogue', edId:'epilogueEditor' },
-    { key:'hasAfterword', label:'Afterword', edId:'afterwordEditor' },
-    { key:'hasGlossary', label:'Glossary', edId:'glossaryEditor' },
-    { key:'hasBibliography', label:'Bibliography', edId:'bibEditor' },
+    { key:'hasEpilogue',    label:'Epilogue',         edId:'epilogueEditor' },
+    { key:'hasAfterword',   label:'Afterword',        edId:'afterwordEditor' },
+    { key:'hasGlossary',    label:'Glossary',         edId:'glossaryEditor' },
+    { key:'hasBibliography',label:'Bibliography',     edId:'bibEditor' },
     { key:'hasAboutAuthor', label:'About the Author', edId:'aboutEditor' },
+    { key:'hasColophon',    label:'Colophon',         edId:'colophonEditor' },
   ];
   backSecs.forEach(sec => {
-    if (document.getElementById(sec.key) && document.getElementById(sec.key).checked) {
-      const editorEl = document.getElementById(sec.edId);
-      const content = editorEl ? editorEl.innerHTML : '';
-      html += pageWrap(`<div class="preview-chapter-title">${escHtml(sec.label)}</div><div>${content || `<p><em>Content for ${sec.label}</em></p>`}</div>`, sec.label);
-    }
+    if (!document.getElementById(sec.key)?.checked) return;
+    const edEl = document.getElementById(sec.edId);
+    html += pageWrap(`<div class="preview-chapter-title">${escHtml(sec.label)}</div><div>${edEl ? edEl.innerHTML : ''}</div>`, sec.label);
   });
-  previewBody.innerHTML = html || '<p style="color:#888;padding:40px;text-align:center;">No content to preview yet. Add chapters or sections.</p>';
+  previewBody.innerHTML = html || '<p style="color:#888;padding:40px;text-align:center;">No content to preview yet.</p>';
 }
 
 // ===== FULLSCREEN =====
@@ -438,9 +483,9 @@ function toggleFullscreen() {
 
 // ===== EXPORT =====
 async function exportBook() {
-  const title = document.getElementById('bookTitle').value.trim();
+  const title  = document.getElementById('bookTitle').value.trim();
   const author = document.getElementById('authorName').value.trim();
-  if (!title) { showToast('⚠️ Please enter a Book Title (required)', 'error'); document.getElementById('bookTitle').focus(); return; }
+  if (!title)  { showToast('⚠️ Please enter a Book Title (required)', 'error');  document.getElementById('bookTitle').focus();  return; }
   if (!author) { showToast('⚠️ Please enter an Author Name (required)', 'error'); document.getElementById('authorName').focus(); return; }
 
   document.getElementById('exportBtnText').textContent = 'Generating…';
@@ -456,56 +501,50 @@ async function exportBook() {
   document.getElementById('exportSpinner').style.display = 'none';
 }
 
-// ===== PDF EXPORT — FIX #6 #8 #9 #10 =====
+// ===== PDF EXPORT =====
 async function exportPDF() {
   const { jsPDF } = window.jspdf;
   const pageSizeMap = { A4:[210,297], A5:[148,210], Letter:[215.9,279.4], '6x9':[152.4,228.6], '5x8':[127,203.2] };
-  const selectedSize = document.getElementById('pageSize').value;
-  const [pw, ph] = pageSizeMap[selectedSize] || [148, 210];
+  const [pw, ph] = pageSizeMap[document.getElementById('pageSize').value] || [148, 210];
   const doc = new jsPDF({ unit:'mm', format:[pw,ph], orientation:'portrait' });
 
-  const bookTitle   = document.getElementById('bookTitle').value || 'Untitled Book';
-  const subtitle    = document.getElementById('bookSubtitle').value || '';
-  const author      = document.getElementById('authorName').value || '';
-  const publisher   = document.getElementById('publisherName').value || '';
-  const year        = document.getElementById('pubYear').value || new Date().getFullYear();
-  const isbn        = document.getElementById('isbnNum').value || '';
-  const edition     = document.getElementById('editionNum').value || '';
-  const fontSize    = parseInt(document.getElementById('fontSize').value) || 11;
-  const lineSpacing = parseFloat(document.getElementById('lineSpacing').value) || 1.5;
-  const showHeader  = document.getElementById('showRunningHeader').checked;
+  const bookTitle    = document.getElementById('bookTitle').value || 'Untitled Book';
+  const subtitle     = document.getElementById('bookSubtitle').value || '';
+  const author       = document.getElementById('authorName').value || '';
+  const publisher    = document.getElementById('publisherName').value || '';
+  const year         = document.getElementById('pubYear').value || new Date().getFullYear();
+  const isbn         = document.getElementById('isbnNum').value || '';
+  const edition      = document.getElementById('editionNum').value || '';
+  const fontSize     = parseInt(document.getElementById('fontSize').value) || 11;
+  const lineSpacing  = parseFloat(document.getElementById('lineSpacing').value) || 1.5;
+  const showHeader   = document.getElementById('showRunningHeader').checked;
   const showPageNums = document.getElementById('showPageNumbers').checked;
-  const chNewPage   = document.getElementById('chapterNewPage').checked;
-  const margin      = parseInt(document.getElementById('marginSize').value) || 20;
-  const chStyle     = document.getElementById('chapterStyle').value;
-  const themeMap    = { black:'#1a1228', navy:'#1a2744', sepia:'#3d2b1f', forest:'#1a2e1a' };
+  const chNewPage    = document.getElementById('chapterNewPage').checked;
+  const margin       = parseInt(document.getElementById('marginSize').value) || 20;
+  const chStyle      = document.getElementById('chapterStyle').value;
+  const themeMap     = { black:'#1a1228', navy:'#1a2744', sepia:'#3d2b1f', forest:'#1a2e1a' };
   const headingColor = themeMap[document.getElementById('colorTheme').value] || '#1a1228';
-  const lineH = fontSize * lineSpacing * 0.352778;
+  const lineH        = fontSize * lineSpacing * 0.352778;
   let pageNum = 0;
   let currentChapterTitle = '';
-  let isUnitPage = false;
-
-  // FIX #10: jsPDF uses built-in fonts which don't support Devanagari natively.
-  // We'll embed Unicode text as UTF-8 strings and use the 'times' font which
-  // handles Latin. For Hindi, we note in the PDF that unicode content is included.
-  // True Devanagari requires embedding a custom font — we set up for that here.
+  // F1: suppress header on specific pages (title, copyright, TOC, unit dividers)
+  let suppressHeader = false;
 
   function newPage(isFirst = false) {
     if (!isFirst) doc.addPage([pw, ph]);
     pageNum++;
   }
 
-  // FIX #9: Even pages = book title on left; odd pages = chapter on right; unit pages = none
+  // F1: Header only drawn when suppressHeader = false
   function drawRunningHeader() {
-    if (!showHeader || isUnitPage) return;
+    if (!showHeader || suppressHeader) return;
     doc.setFont('times', 'italic');
     doc.setFontSize(7.5);
     doc.setTextColor(140, 140, 140);
-    const isEven = pageNum % 2 === 0;
-    if (isEven) {
-      doc.text(bookTitle, margin, margin - 5, { maxWidth: pw - 2*margin });
+    if (pageNum % 2 === 0) {
+      doc.text(bookTitle, margin, margin - 5, { maxWidth: pw - 2 * margin });
     } else {
-      doc.text(currentChapterTitle, pw - margin, margin - 5, { align:'right', maxWidth: pw - 2*margin });
+      doc.text(currentChapterTitle, pw - margin, margin - 5, { align:'right', maxWidth: pw - 2 * margin });
     }
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, margin - 3, pw - margin, margin - 3);
@@ -519,19 +558,14 @@ async function exportPDF() {
     doc.text(String(pageNum), pw / 2, ph - 7, { align:'center' });
   }
 
-  function getTopY() { return margin + (showHeader && !isUnitPage ? 10 : 4); }
+  function getTopY() { return margin + (showHeader && !suppressHeader ? 10 : 4); }
 
-  // FIX #10: Write text that may contain Unicode/Hindi
-  // jsPDF's built-in fonts are Latin-only. For Hindi support we sanitize and note it.
-  // Full Devanagari requires loading a custom TTF — we use a workaround:
-  // replace Devanagari with a "[Hindi text]" placeholder in native jsPDF
-  // BUT include all content in the EPUB which supports Unicode fully.
   function writeLines(text, x, y, opts = {}) {
     if (!text || !text.trim()) return y;
-    const maxW = opts.maxWidth || (pw - 2*margin);
-    const sz = opts.size || fontSize;
-    const fam = opts.font || 'times';
-    const sty = opts.style || 'normal';
+    const maxW = opts.maxWidth || (pw - 2 * margin);
+    const sz   = opts.size  || fontSize;
+    const fam  = opts.font  || 'times';
+    const sty  = opts.style || 'normal';
     doc.setFont(fam, sty);
     doc.setFontSize(sz);
     doc.setTextColor(opts.color || '#222222');
@@ -548,41 +582,33 @@ async function exportPDF() {
   function htmlToPlainText(html) {
     const el = document.createElement('div');
     el.innerHTML = html;
-    // Preserve paragraph breaks
-    el.querySelectorAll('p,br,div,h1,h2,h3,h4,li').forEach(n => {
-      n.prepend('\n');
-    });
+    el.querySelectorAll('p,br,div,h1,h2,h3,h4,li').forEach(n => { n.prepend('\n'); });
     return el.innerText || el.textContent || '';
   }
 
-  // FIX #6: COVER PAGE — full page image, no header, no page number
+  // B2: COVER — full page, no header, no page number
   if (state.coverImageDataUrl) {
     newPage(true);
-    isUnitPage = true; // suppress header
-    // Draw cover image full page
-    const img = state.coverImageDataUrl;
-    doc.addImage(img, 'JPEG', 0, 0, pw, ph, '', 'FAST');
-    // No page number on cover
-    isUnitPage = false;
+    suppressHeader = true;
+    doc.addImage(state.coverImageDataUrl, getImageType(state.coverImageDataUrl), 0, 0, pw, ph, '', 'FAST');
+    suppressHeader = false;
   }
 
-  // TITLE PAGE
+  // TITLE PAGE — F1: no running header
   if (document.getElementById('hasTitlePage').checked) {
     if (pageNum === 0) newPage(true); else newPage();
-    currentChapterTitle = 'Title Page';
-    isUnitPage = false;
-    drawRunningHeader();
+    suppressHeader = true; // F1
     let ty = ph / 3;
     doc.setFont('times', 'bold');
     doc.setFontSize(Math.min(24, pw / 6.5));
     doc.setTextColor(headingColor);
-    doc.text(bookTitle, pw/2, ty, { align:'center', maxWidth: pw - 2*margin });
+    doc.text(bookTitle, pw / 2, ty, { align:'center', maxWidth: pw - 2 * margin });
     ty += 11;
     if (subtitle) {
       doc.setFont('times', 'italic');
       doc.setFontSize(13);
       doc.setTextColor(100, 80, 60);
-      doc.text(subtitle, pw/2, ty, { align:'center', maxWidth: pw - 2*margin });
+      doc.text(subtitle, pw / 2, ty, { align:'center', maxWidth: pw - 2 * margin });
       ty += 8;
     }
     if (author) {
@@ -590,193 +616,212 @@ async function exportPDF() {
       doc.setFont('times', 'normal');
       doc.setFontSize(12);
       doc.setTextColor(60, 60, 60);
-      doc.text(author, pw/2, ty, { align:'center' });
+      doc.text(author, pw / 2, ty, { align:'center' });
     }
     if (publisher || year) {
       doc.setFontSize(9);
       doc.setTextColor(140, 140, 140);
-      doc.text(`${publisher}${publisher && year ? ' · ' : ''}${year}`, pw/2, ph - margin - 10, { align:'center' });
+      doc.text(`${publisher}${publisher && year ? ' · ' : ''}${year}`, pw / 2, ph - margin - 10, { align:'center' });
     }
     if (edition) {
       doc.setFontSize(8.5);
-      doc.text(edition, pw/2, ph - margin - 4, { align:'center' });
+      doc.text(edition, pw / 2, ph - margin - 4, { align:'center' });
     }
     drawPageNum();
+    suppressHeader = false;
   }
 
-  // COPYRIGHT
+  // COPYRIGHT PAGE — F1: no header; F3: use editor content; F4: no watermark
   if (document.getElementById('hasCopyrightPage').checked) {
     newPage();
-    currentChapterTitle = 'Copyright';
-    drawRunningHeader();
+    suppressHeader = true; // F1
     let cy = getTopY();
-    const copyLines = [
-      `Copyright © ${year} ${author || 'Author'}`,
-      'All rights reserved.',
-      '',
-      isbn ? `ISBN: ${isbn}` : '',
-      '',
-      'No part of this publication may be reproduced without written permission.',
-      '',
-      publisher ? `Published by ${publisher}` : '',
-      '',
-      'Formatted with AuthorPro',
-      'https://avinashwalton.github.io/AuthorPro/',
-    ].filter(l => l !== null);
-    for (const line of copyLines) {
-      cy = writeLines(line, margin, cy, { size: 8.5, style: 'normal' });
-      if (!line) cy += 2;
+    const copyrightEditorEl = document.getElementById('copyrightEditor');
+    const copyrightText = htmlToPlainText(copyrightEditorEl ? copyrightEditorEl.innerHTML : '');
+    if (copyrightText.trim()) {
+      // F3: Use user's editable content
+      const paras = copyrightText.split(/\n\n+/).filter(p => p.trim());
+      for (const para of paras) {
+        cy = writeLines(para.trim(), margin, cy, { size: 9 });
+        cy += 2;
+      }
+    } else {
+      // Fallback if editor is empty — F4: no watermark
+      const lines = [
+        `Copyright © ${year} ${author || 'Author'}`,
+        'All rights reserved.',
+        '',
+        isbn ? `ISBN: ${isbn}` : null,
+        '',
+        'No part of this publication may be reproduced without written permission.',
+        publisher ? `\nPublished by ${publisher}` : null,
+      ].filter(l => l !== null);
+      for (const line of lines) {
+        cy = writeLines(line, margin, cy, { size: 9 });
+        if (!line) cy += 2;
+      }
     }
     drawPageNum();
+    suppressHeader = false;
   }
 
   // FRONT MATTER SECTIONS
   const frontSecs = [
-    { key:'hasDedication', label:'Dedication', edId:'dedicationEditor' },
-    { key:'hasForeword', label:'Foreword', edId:'forewordEditor' },
-    { key:'hasPreface', label:'Preface', edId:'prefaceEditor' },
+    { key:'hasDedication',       label:'Dedication',       edId:'dedicationEditor' },
+    { key:'hasForeword',         label:'Foreword',         edId:'forewordEditor' },
+    { key:'hasPreface',          label:'Preface',          edId:'prefaceEditor' },
     { key:'hasAcknowledgements', label:'Acknowledgements', edId:'ackEditor' },
-    { key:'hasIntroduction', label:'Introduction', edId:'introEditor' },
+    { key:'hasIntroduction',     label:'Introduction',     edId:'introEditor' },
   ];
   for (const sec of frontSecs) {
-    const el = document.getElementById(sec.key);
-    if (!el || !el.checked) continue;
+    if (!document.getElementById(sec.key)?.checked) continue;
     newPage();
+    suppressHeader = false;
     currentChapterTitle = sec.label;
-    isUnitPage = false;
     drawRunningHeader();
     let sy = getTopY();
     doc.setFont('times', 'bold');
     doc.setFontSize(17);
     doc.setTextColor(headingColor);
-    doc.text(sec.label, pw/2, sy, { align:'center' });
+    doc.text(sec.label, pw / 2, sy, { align:'center' });
     sy += 10;
     const editorEl = document.getElementById(sec.edId);
     const content = htmlToPlainText(editorEl ? editorEl.innerHTML : '');
-    const paras = content.split(/\n\n+/).filter(p => p.trim());
-    for (const para of paras) {
+    for (const para of content.split(/\n\n+/).filter(p => p.trim())) {
       sy = writeLines(para.trim(), margin, sy);
       sy += lineH * 0.3;
     }
     drawPageNum();
   }
 
-  // TABLE OF CONTENTS
+  // TABLE OF CONTENTS — F1: no running header
   if (document.getElementById('hasTOC').checked && state.chapters.length > 0) {
     newPage();
-    currentChapterTitle = 'Table of Contents';
-    isUnitPage = false;
-    drawRunningHeader();
+    suppressHeader = true; // F1
     let ty = getTopY();
     doc.setFont('times', 'bold');
     doc.setFontSize(17);
     doc.setTextColor(headingColor);
-    doc.text('Table of Contents', pw/2, ty, { align:'center' });
+    doc.text('Table of Contents', pw / 2, ty, { align:'center' });
     ty += 12;
     doc.setFont('times', 'normal');
     doc.setFontSize(fontSize);
     state.chapters.forEach((ch, i) => {
-      ty = writeLines(`Chapter ${i+1}  —  ${ch.title || 'Untitled'}`, margin, ty);
+      ty = writeLines(`Chapter ${i + 1}  —  ${ch.title || 'Untitled'}`, margin, ty);
     });
     drawPageNum();
+    suppressHeader = false;
   }
 
   // CHAPTERS
   for (let i = 0; i < state.chapters.length; i++) {
     const ch = state.chapters[i];
 
-    // Check if there's a unit for this chapter — FIX #9: draw unit page with no header
+    // Unit divider page — no header
     if (document.getElementById('useUnits').checked && ch.unitId) {
       const unit = state.units.find(u => u.id === ch.unitId);
       const isFirstOfUnit = state.chapters.filter(c => c.unitId === ch.unitId).indexOf(ch) === 0;
       if (isFirstOfUnit && unit) {
         newPage();
-        isUnitPage = true; // FIX #9: NO header on unit pages
-        // No drawRunningHeader()
+        suppressHeader = true;
         let uy = ph / 2 - 20;
         doc.setFont('times', 'bold');
         doc.setFontSize(11);
         doc.setTextColor(180, 150, 80);
         const unitIdx = state.units.indexOf(unit);
-        doc.text(`UNIT ${unitIdx + 1}`, pw/2, uy - 12, { align:'center' });
+        doc.text(`UNIT ${unitIdx + 1}`, pw / 2, uy - 12, { align:'center' });
         doc.setFontSize(22);
         doc.setTextColor(headingColor);
-        doc.text(unit.title || `Unit ${unitIdx + 1}`, pw/2, uy, { align:'center', maxWidth: pw - 2*margin });
-        // no page number on unit divider page
-        isUnitPage = false;
+        doc.text(unit.title || `Unit ${unitIdx + 1}`, pw / 2, uy, { align:'center', maxWidth: pw - 2 * margin });
+        suppressHeader = false;
       }
     }
 
     if (chNewPage || i === 0) newPage(pageNum === 0);
-    currentChapterTitle = ch.title || `Chapter ${i+1}`;
-    isUnitPage = false;
+    suppressHeader = false;
+    currentChapterTitle = ch.title || `Chapter ${i + 1}`;
     drawRunningHeader();
     let cy = getTopY();
     doc.setTextColor(headingColor);
 
-    // FIX #8: All 4 chapter heading styles work correctly
+    // F2: All 4 heading styles — ASCII-safe, no broken Unicode chars
     if (chStyle === 'classic') {
       doc.setFont('times', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(150, 140, 120);
-      doc.text(`CHAPTER ${i+1}`, pw/2, cy, { align:'center' });
+      doc.text(`CHAPTER ${i + 1}`, pw / 2, cy, { align:'center' });
       cy += 7;
       doc.setFont('times', 'bold');
-      doc.setFontSize(Math.min(18, pw/8));
+      doc.setFontSize(Math.min(18, pw / 8));
       doc.setTextColor(headingColor);
-      doc.text(ch.title || `Chapter ${i+1}`, pw/2, cy, { align:'center', maxWidth: pw-2*margin });
+      doc.text(ch.title || `Chapter ${i + 1}`, pw / 2, cy, { align:'center', maxWidth: pw - 2 * margin });
       cy += 12;
       doc.setDrawColor(200, 180, 120);
-      doc.line(margin + pw*0.2, cy, pw - margin - pw*0.2, cy);
+      doc.setLineWidth(0.4);
+      doc.line(margin + pw * 0.2, cy, pw - margin - pw * 0.2, cy);
       cy += 8;
+
     } else if (chStyle === 'modern') {
-      // Large number on left, title to the right
       doc.setFont('times', 'bold');
       doc.setFontSize(52);
       doc.setTextColor(220, 200, 160);
-      doc.text(String(i+1), margin, cy + 14);
-      doc.setFontSize(Math.min(14, pw/11));
+      doc.text(String(i + 1), margin, cy + 14);
+      doc.setFontSize(Math.min(14, pw / 11));
       doc.setTextColor(headingColor);
-      doc.text(ch.title || `Chapter ${i+1}`, margin + 28, cy + 8, { maxWidth: pw - margin - 36 });
+      doc.text(ch.title || `Chapter ${i + 1}`, margin + 28, cy + 8, { maxWidth: pw - margin - 36 });
       cy += 22;
       doc.setDrawColor(200, 190, 150);
+      doc.setLineWidth(0.3);
       doc.line(margin, cy, pw - margin, cy);
       cy += 8;
+
     } else if (chStyle === 'minimal') {
-      // FIX #8: Just title, centered, with generous space
       cy += 8;
       doc.setFont('times', 'bold');
-      doc.setFontSize(Math.min(16, pw/9));
+      doc.setFontSize(Math.min(16, pw / 9));
       doc.setTextColor(headingColor);
-      doc.text(ch.title || `Chapter ${i+1}`, pw/2, cy, { align:'center', maxWidth: pw-2*margin });
+      doc.text(ch.title || `Chapter ${i + 1}`, pw / 2, cy, { align:'center', maxWidth: pw - 2 * margin });
       cy += 16;
+
     } else if (chStyle === 'ornate') {
-      // FIX #8: Ornate with decorators above and below
-      doc.setFont('times', 'normal');
+      // F2: Use ASCII-safe decoration + doc.line() — no broken Unicode
+      doc.setDrawColor(200, 160, 80);
+      doc.setLineWidth(0.5);
+      const cx = pw / 2;
+      // Top decorative line with center gap
+      doc.line(margin + 10, cy + 2, cx - 12, cy + 2);
+      doc.line(cx + 12, cy + 2, pw - margin - 10, cy + 2);
+      // Center diamond drawn with filled rect rotated — use text asterisk safely
+      doc.setFont('times', 'bold');
       doc.setFontSize(9);
-      doc.setTextColor(180, 150, 80);
-      doc.text('✦ ✦ ✦', pw/2, cy, { align:'center' });
-      cy += 7;
-      doc.setFontSize(8.5);
-      doc.text(`CHAPTER ${i+1}`, pw/2, cy, { align:'center' });
+      doc.setTextColor(200, 160, 80);
+      doc.text('*', cx - 1.5, cy + 4);
+      cy += 9;
+      doc.setFontSize(8);
+      doc.setTextColor(150, 130, 80);
+      doc.text(`CHAPTER ${i + 1}`, pw / 2, cy, { align:'center' });
       cy += 7;
       doc.setFont('times', 'bold');
-      doc.setFontSize(Math.min(16, pw/9));
+      doc.setFontSize(Math.min(16, pw / 9));
       doc.setTextColor(headingColor);
-      doc.text(ch.title || `Chapter ${i+1}`, pw/2, cy, { align:'center', maxWidth: pw-2*margin });
-      cy += 6;
-      doc.setFont('times', 'normal');
+      doc.text(ch.title || `Chapter ${i + 1}`, pw / 2, cy, { align:'center', maxWidth: pw - 2 * margin });
+      cy += 8;
+      // Bottom decorative line
+      doc.setDrawColor(200, 160, 80);
+      doc.setLineWidth(0.5);
+      doc.line(margin + 10, cy, cx - 12, cy);
+      doc.line(cx + 12, cy, pw - margin - 10, cy);
+      doc.setFont('times', 'bold');
       doc.setFontSize(9);
-      doc.setTextColor(180, 150, 80);
-      doc.text('─────────────────', pw/2, cy, { align:'center' });
+      doc.setTextColor(200, 160, 80);
+      doc.text('*', cx - 1.5, cy + 2);
       cy += 10;
     }
 
-    // Chapter content — FIX #10: extract plain text (Unicode preserved)
+    // Chapter content
     const plainText = htmlToPlainText(ch.content || '');
-    const paras = plainText.split(/\n\n+/).filter(p => p.trim());
     doc.setTextColor('#222222');
-    for (const para of paras) {
+    for (const para of plainText.split(/\n\n+/).filter(p => p.trim())) {
       cy = writeLines(para.replace(/\n/g, ' ').trim(), margin, cy);
       cy += lineH * 0.3;
     }
@@ -785,81 +830,85 @@ async function exportPDF() {
 
   // BACK MATTER
   const backSecs = [
-    { key:'hasEpilogue', label:'Epilogue', edId:'epilogueEditor' },
-    { key:'hasAfterword', label:'Afterword', edId:'afterwordEditor' },
-    { key:'hasGlossary', label:'Glossary', edId:'glossaryEditor' },
-    { key:'hasBibliography', label:'Bibliography / References', edId:'bibEditor' },
-    { key:'hasAboutAuthor', label:'About the Author', edId:'aboutEditor' },
+    { key:'hasEpilogue',    label:'Epilogue',                  edId:'epilogueEditor' },
+    { key:'hasAfterword',   label:'Afterword',                 edId:'afterwordEditor' },
+    { key:'hasGlossary',    label:'Glossary',                  edId:'glossaryEditor' },
+    { key:'hasBibliography',label:'Bibliography / References', edId:'bibEditor' },
+    { key:'hasAboutAuthor', label:'About the Author',          edId:'aboutEditor' },
   ];
   for (const sec of backSecs) {
-    const el = document.getElementById(sec.key);
-    if (!el || !el.checked) continue;
+    if (!document.getElementById(sec.key)?.checked) continue;
     newPage();
+    suppressHeader = false;
     currentChapterTitle = sec.label;
-    isUnitPage = false;
     drawRunningHeader();
     let sy = getTopY();
     doc.setFont('times', 'bold');
     doc.setFontSize(17);
     doc.setTextColor(headingColor);
-    doc.text(sec.label, pw/2, sy, { align:'center' });
+    doc.text(sec.label, pw / 2, sy, { align:'center' });
     sy += 10;
     const editorEl = document.getElementById(sec.edId);
     const content = htmlToPlainText(editorEl ? editorEl.innerHTML : '');
-    const paras = content.split(/\n\n+/).filter(p => p.trim());
-    for (const para of paras) {
+    for (const para of content.split(/\n\n+/).filter(p => p.trim())) {
       sy = writeLines(para.trim(), margin, sy);
       sy += lineH * 0.3;
     }
     drawPageNum();
   }
-  // Auto index
-  if (document.getElementById('hasIndex') && document.getElementById('hasIndex').checked) {
+
+  // INDEX
+  if (document.getElementById('hasIndex')?.checked) {
     newPage();
+    suppressHeader = false;
     currentChapterTitle = 'Index';
     drawRunningHeader();
     let iy = getTopY();
-    doc.setFont('times','bold');
+    doc.setFont('times', 'bold');
     doc.setFontSize(17);
     doc.setTextColor(headingColor);
-    doc.text('Index', pw/2, iy, { align:'center' });
+    doc.text('Index', pw / 2, iy, { align:'center' });
     iy += 12;
-    doc.setFont('times','normal');
-    doc.setFontSize(9);
-    state.chapters.forEach((ch,i) => {
-      iy = writeLines(`Chapter ${i+1}: ${ch.title || 'Untitled'}`, margin, iy, { size:9 });
+    state.chapters.forEach((ch, i) => {
+      iy = writeLines(`Chapter ${i + 1}: ${ch.title || 'Untitled'}`, margin, iy, { size: 9 });
     });
     drawPageNum();
   }
-  // Colophon
-  if (document.getElementById('hasColophon') && document.getElementById('hasColophon').checked) {
+
+  // COLOPHON — F4/F5: user's content only, no auto watermark
+  if (document.getElementById('hasColophon')?.checked) {
     newPage();
+    suppressHeader = false;
+    currentChapterTitle = 'Colophon';
     drawRunningHeader();
-    let col = getTopY() + 20;
-    doc.setFont('times','italic');
-    doc.setFontSize(9);
-    doc.setTextColor(160,160,160);
-    writeLines('This book was formatted using AuthorPro — https://avinashwalton.github.io/AuthorPro/', margin, col, { size:9 });
+    let col = getTopY();
+    const colEditor = document.getElementById('colophonEditor');
+    const colText = htmlToPlainText(colEditor ? colEditor.innerHTML : '');
+    if (colText.trim()) {
+      for (const para of colText.split(/\n\n+/).filter(p => p.trim())) {
+        col = writeLines(para.trim(), margin, col, { size: 9, style: 'normal' });
+        col += lineH * 0.3;
+      }
+    }
     drawPageNum();
   }
 
-  const safeTitle = (bookTitle).replace(/[^a-zA-Z0-9 _\u0900-\u097F-]/g,'').replace(/\s+/g,'_');
+  const safeTitle = bookTitle.replace(/[^a-zA-Z0-9 _\u0900-\u097F-]/g, '').replace(/\s+/g, '_');
   doc.save(`${safeTitle}_AuthorPro.pdf`);
   showToast('✅ PDF downloaded successfully!', 'success');
 }
 
-// ===== EPUB EXPORT — FIX #10: Full Unicode support =====
+// ===== EPUB EXPORT — F4: no watermark =====
 function exportEPUB() {
-  const bookTitle  = document.getElementById('bookTitle').value || 'Untitled Book';
-  const author     = document.getElementById('authorName').value || 'Unknown Author';
-  const publisher  = document.getElementById('publisherName').value || '';
-  const year       = document.getElementById('pubYear').value || new Date().getFullYear();
-  const isbn       = document.getElementById('isbnNum').value || '';
+  const bookTitle = document.getElementById('bookTitle').value || 'Untitled Book';
+  const author    = document.getElementById('authorName').value || 'Unknown Author';
+  const publisher = document.getElementById('publisherName').value || '';
+  const year      = document.getElementById('pubYear').value || new Date().getFullYear();
+  const isbn      = document.getElementById('isbnNum').value || '';
 
-  // Build full HTML book with all sections — Unicode fully preserved
   const css = `
     body{font-family:'Noto Serif','Noto Sans',Georgia,serif;font-size:1em;line-height:1.8;margin:2em 1.5em;color:#1a1228;}
-    h1{font-size:1.9em;text-align:center;margin:1em 0 0.6em;font-family:Georgia,serif;}
+    h1{font-size:1.9em;text-align:center;margin:1em 0 0.6em;}
     h2{font-size:1.4em;margin:0.8em 0 0.4em;}
     h3{font-size:1.1em;}
     .chapter-num{font-size:0.72em;text-transform:uppercase;letter-spacing:0.15em;color:#888;text-align:center;margin-bottom:0.3em;}
@@ -883,11 +932,9 @@ ${isbn ? `<meta name="isbn" content="${escHtml(isbn)}"/>` : ''}
 </head>
 <body>`;
 
-  // Cover
   if (state.coverImageDataUrl) {
     fullHtml += `<div class="page-break" style="text-align:center;"><img src="${state.coverImageDataUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;" alt="Cover"/></div>`;
   }
-  // Title page
   if (document.getElementById('hasTitlePage').checked) {
     fullHtml += `<div class="title-page page-break"><h1>${escHtml(bookTitle)}</h1>`;
     const sub = document.getElementById('bookSubtitle').value;
@@ -898,58 +945,57 @@ ${isbn ? `<meta name="isbn" content="${escHtml(isbn)}"/>` : ''}
     if (isbn) fullHtml += `<p>ISBN: ${escHtml(isbn)}</p>`;
     fullHtml += `</div>`;
   }
-  // Front matter — FIX #10: innerHTML preserves Unicode directly
+  // F3/F4: Copyright — use editor content, no watermark
+  if (document.getElementById('hasCopyrightPage').checked) {
+    const edEl = document.getElementById('copyrightEditor');
+    const content = edEl && edEl.innerHTML.trim() ? edEl.innerHTML : `<p>Copyright &copy; ${year} ${escHtml(author)}</p><p>All rights reserved.</p>`;
+    fullHtml += `<div class="page-break"><h1>Copyright</h1>${content}</div>`;
+  }
   const frontSecs = [
-    { key:'hasDedication', label:'Dedication', edId:'dedicationEditor' },
-    { key:'hasForeword', label:'Foreword', edId:'forewordEditor' },
-    { key:'hasPreface', label:'Preface', edId:'prefaceEditor' },
+    { key:'hasDedication',       label:'Dedication',       edId:'dedicationEditor' },
+    { key:'hasForeword',         label:'Foreword',         edId:'forewordEditor' },
+    { key:'hasPreface',          label:'Preface',          edId:'prefaceEditor' },
     { key:'hasAcknowledgements', label:'Acknowledgements', edId:'ackEditor' },
-    { key:'hasIntroduction', label:'Introduction', edId:'introEditor' },
+    { key:'hasIntroduction',     label:'Introduction',     edId:'introEditor' },
   ];
   frontSecs.forEach(sec => {
     if (!document.getElementById(sec.key)?.checked) return;
     const edEl = document.getElementById(sec.edId);
-    const content = edEl ? edEl.innerHTML : '';
-    fullHtml += `<div class="page-break"><h1>${escHtml(sec.label)}</h1>${content || `<p><em>Content for ${sec.label}</em></p>`}</div>`;
+    fullHtml += `<div class="page-break"><h1>${escHtml(sec.label)}</h1>${edEl ? edEl.innerHTML : ''}</div>`;
   });
-  // TOC
   if (document.getElementById('hasTOC').checked && state.chapters.length > 0) {
     fullHtml += `<div class="page-break"><h1>Table of Contents</h1><ul>`;
-    state.chapters.forEach((ch,i) => { fullHtml += `<li>Chapter ${i+1} — ${escHtml(ch.title || 'Untitled')}</li>`; });
+    state.chapters.forEach((ch, i) => { fullHtml += `<li>Chapter ${i + 1} — ${escHtml(ch.title || 'Untitled')}</li>`; });
     fullHtml += `</ul></div>`;
   }
-  // Chapters — FIX #10: content innerHTML preserved with all Unicode
   state.chapters.forEach((ch, i) => {
-    fullHtml += `<div class="page-break">`;
-    fullHtml += `<p class="chapter-num">Chapter ${i+1}</p>`;
-    fullHtml += `<h1>${escHtml(ch.title || `Chapter ${i+1}`)}</h1>`;
-    fullHtml += ch.content || '<p></p>';
-    fullHtml += `</div>`;
+    fullHtml += `<div class="page-break"><p class="chapter-num">Chapter ${i + 1}</p><h1>${escHtml(ch.title || `Chapter ${i + 1}`)}</h1>${ch.content || '<p></p>'}</div>`;
   });
-  // Back matter
   const backSecs = [
-    { key:'hasEpilogue', label:'Epilogue', edId:'epilogueEditor' },
-    { key:'hasAfterword', label:'Afterword', edId:'afterwordEditor' },
-    { key:'hasGlossary', label:'Glossary', edId:'glossaryEditor' },
-    { key:'hasBibliography', label:'Bibliography', edId:'bibEditor' },
+    { key:'hasEpilogue',    label:'Epilogue',         edId:'epilogueEditor' },
+    { key:'hasAfterword',   label:'Afterword',        edId:'afterwordEditor' },
+    { key:'hasGlossary',    label:'Glossary',         edId:'glossaryEditor' },
+    { key:'hasBibliography',label:'Bibliography',     edId:'bibEditor' },
     { key:'hasAboutAuthor', label:'About the Author', edId:'aboutEditor' },
   ];
   backSecs.forEach(sec => {
     if (!document.getElementById(sec.key)?.checked) return;
     const edEl = document.getElementById(sec.edId);
-    const content = edEl ? edEl.innerHTML : '';
-    fullHtml += `<div class="page-break"><h1>${escHtml(sec.label)}</h1>${content || `<p><em>Content for ${sec.label}</em></p>`}</div>`;
+    fullHtml += `<div class="page-break"><h1>${escHtml(sec.label)}</h1>${edEl ? edEl.innerHTML : ''}</div>`;
   });
+  // F4/F5: Colophon — user content only, no AuthorPro text
   if (document.getElementById('hasColophon')?.checked) {
-    fullHtml += `<div><p style="text-align:center;color:#aaa;font-size:0.85em;">Formatted with AuthorPro — https://avinashwalton.github.io/AuthorPro/</p></div>`;
+    const colEl = document.getElementById('colophonEditor');
+    if (colEl && colEl.innerHTML.trim()) {
+      fullHtml += `<div class="page-break"><h1>Colophon</h1>${colEl.innerHTML}</div>`;
+    }
   }
   fullHtml += '</body></html>';
 
-  // Download as .html (open in browser / import to Calibre for EPUB)
   const blob = new Blob([fullHtml], { type:'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const safeTitle = bookTitle.replace(/[^a-zA-Z0-9 \u0900-\u097F_-]/g,'').replace(/\s+/g,'_');
+  const safeTitle = bookTitle.replace(/[^a-zA-Z0-9 \u0900-\u097F_-]/g, '').replace(/\s+/g, '_');
   a.href = url; a.download = `${safeTitle}_AuthorPro_ebook.html`; a.click();
   URL.revokeObjectURL(url);
   showToast('📱 EPUB (HTML) downloaded! Import into Calibre to convert to .epub/.mobi', 'success');
@@ -959,56 +1005,58 @@ ${isbn ? `<meta name="isbn" content="${escHtml(isbn)}"/>` : ''}
 function saveProgress() {
   syncEditorsToState();
   const data = {
-    version:'2.0', savedAt: new Date().toISOString(),
-    meta:{
-      bookTitle: document.getElementById('bookTitle').value,
-      bookSubtitle: document.getElementById('bookSubtitle').value,
-      authorName: document.getElementById('authorName').value,
+    version: '2.2', savedAt: new Date().toISOString(),
+    meta: {
+      bookTitle:     document.getElementById('bookTitle').value,
+      bookSubtitle:  document.getElementById('bookSubtitle').value,
+      authorName:    document.getElementById('authorName').value,
       publisherName: document.getElementById('publisherName').value,
-      pubYear: document.getElementById('pubYear').value,
-      isbnNum: document.getElementById('isbnNum').value,
-      editionNum: document.getElementById('editionNum').value,
+      pubYear:       document.getElementById('pubYear').value,
+      isbnNum:       document.getElementById('isbnNum').value,
+      editionNum:    document.getElementById('editionNum').value,
     },
     sections: {
-      hasTitlePage: document.getElementById('hasTitlePage').checked,
-      hasCopyrightPage: document.getElementById('hasCopyrightPage').checked,
-      hasDedication: document.getElementById('hasDedication').checked,
-      hasForeword: document.getElementById('hasForeword').checked,
-      hasPreface: document.getElementById('hasPreface').checked,
+      hasTitlePage:        document.getElementById('hasTitlePage').checked,
+      hasCopyrightPage:    document.getElementById('hasCopyrightPage').checked,
+      hasDedication:       document.getElementById('hasDedication').checked,
+      hasForeword:         document.getElementById('hasForeword').checked,
+      hasPreface:          document.getElementById('hasPreface').checked,
       hasAcknowledgements: document.getElementById('hasAcknowledgements').checked,
-      hasTOC: document.getElementById('hasTOC').checked,
-      hasIntroduction: document.getElementById('hasIntroduction').checked,
-      hasEpilogue: document.getElementById('hasEpilogue').checked,
-      hasAfterword: document.getElementById('hasAfterword').checked,
-      hasGlossary: document.getElementById('hasGlossary').checked,
-      hasBibliography: document.getElementById('hasBibliography').checked,
-      hasIndex: document.getElementById('hasIndex').checked,
-      hasAboutAuthor: document.getElementById('hasAboutAuthor').checked,
-      hasColophon: document.getElementById('hasColophon').checked,
+      hasTOC:              document.getElementById('hasTOC').checked,
+      hasIntroduction:     document.getElementById('hasIntroduction').checked,
+      hasEpilogue:         document.getElementById('hasEpilogue').checked,
+      hasAfterword:        document.getElementById('hasAfterword').checked,
+      hasGlossary:         document.getElementById('hasGlossary').checked,
+      hasBibliography:     document.getElementById('hasBibliography').checked,
+      hasIndex:            document.getElementById('hasIndex').checked,
+      hasAboutAuthor:      document.getElementById('hasAboutAuthor').checked,
+      hasColophon:         document.getElementById('hasColophon').checked,
     },
-    frontEditors:{
+    frontEditors: {
+      copyright:  document.getElementById('copyrightEditor')?.innerHTML  || '',
       dedication: document.getElementById('dedicationEditor')?.innerHTML || '',
-      foreword: document.getElementById('forewordEditor')?.innerHTML || '',
-      preface: document.getElementById('prefaceEditor')?.innerHTML || '',
-      ack: document.getElementById('ackEditor')?.innerHTML || '',
-      intro: document.getElementById('introEditor')?.innerHTML || '',
-      epilogue: document.getElementById('epilogueEditor')?.innerHTML || '',
-      afterword: document.getElementById('afterwordEditor')?.innerHTML || '',
-      glossary: document.getElementById('glossaryEditor')?.innerHTML || '',
-      bib: document.getElementById('bibEditor')?.innerHTML || '',
-      about: document.getElementById('aboutEditor')?.innerHTML || '',
+      foreword:   document.getElementById('forewordEditor')?.innerHTML   || '',
+      preface:    document.getElementById('prefaceEditor')?.innerHTML    || '',
+      ack:        document.getElementById('ackEditor')?.innerHTML        || '',
+      intro:      document.getElementById('introEditor')?.innerHTML      || '',
+      epilogue:   document.getElementById('epilogueEditor')?.innerHTML   || '',
+      afterword:  document.getElementById('afterwordEditor')?.innerHTML  || '',
+      glossary:   document.getElementById('glossaryEditor')?.innerHTML   || '',
+      bib:        document.getElementById('bibEditor')?.innerHTML        || '',
+      about:      document.getElementById('aboutEditor')?.innerHTML      || '',
+      colophon:   document.getElementById('colophonEditor')?.innerHTML   || '',
     },
-    settings:{
-      useUnits: document.getElementById('useUnits').checked,
-      pageSize: document.getElementById('pageSize').value,
-      fontSize: document.getElementById('fontSize').value,
-      lineSpacing: document.getElementById('lineSpacing').value,
-      marginSize: document.getElementById('marginSize').value,
-      chapterStyle: document.getElementById('chapterStyle').value,
-      colorTheme: document.getElementById('colorTheme').value,
-      showPageNumbers: document.getElementById('showPageNumbers').checked,
+    settings: {
+      useUnits:          document.getElementById('useUnits').checked,
+      pageSize:          document.getElementById('pageSize').value,
+      fontSize:          document.getElementById('fontSize').value,
+      lineSpacing:       document.getElementById('lineSpacing').value,
+      marginSize:        document.getElementById('marginSize').value,
+      chapterStyle:      document.getElementById('chapterStyle').value,
+      colorTheme:        document.getElementById('colorTheme').value,
+      showPageNumbers:   document.getElementById('showPageNumbers').checked,
       showRunningHeader: document.getElementById('showRunningHeader').checked,
-      chapterNewPage: document.getElementById('chapterNewPage').checked,
+      chapterNewPage:    document.getElementById('chapterNewPage').checked,
     },
     units: state.units,
     chapters: state.chapters,
@@ -1032,7 +1080,7 @@ function loadProgress() {
     const reader = new FileReader();
     reader.onload = ev => {
       try { restoreFromData(JSON.parse(ev.target.result)); showToast('📂 Project loaded!', 'success'); }
-      catch(err) { showToast('Error loading file. Invalid format.', 'error'); }
+      catch (err) { showToast('Error loading file. Invalid format.', 'error'); }
     };
     reader.readAsText(file);
   };
@@ -1040,15 +1088,51 @@ function loadProgress() {
 }
 
 function restoreFromData(data) {
-  if (data.meta) { Object.entries(data.meta).forEach(([k,v]) => { const el=document.getElementById(k); if(el) el.value=v; }); }
-  if (data.sections) { Object.entries(data.sections).forEach(([k,v]) => { const el=document.getElementById(k); if(el) el.checked=v; }); }
+  if (data.meta) {
+    Object.entries(data.meta).forEach(([k, v]) => {
+      const el = document.getElementById(k); if (el) el.value = v;
+    });
+  }
+  if (data.sections) {
+    Object.entries(data.sections).forEach(([k, v]) => {
+      const el = document.getElementById(k); if (el) el.checked = v;
+    });
+  }
   if (data.frontEditors) {
-    const map = { dedication:'dedicationEditor', foreword:'forewordEditor', preface:'prefaceEditor', ack:'ackEditor', intro:'introEditor', epilogue:'epilogueEditor', afterword:'afterwordEditor', glossary:'glossaryEditor', bib:'bibEditor', about:'aboutEditor' };
-    Object.entries(data.frontEditors).forEach(([k,v]) => { const el=document.getElementById(map[k]); if(el) el.innerHTML=v; });
+    const map = {
+      copyright:  'copyrightEditor',
+      dedication: 'dedicationEditor',
+      foreword:   'forewordEditor',
+      preface:    'prefaceEditor',
+      ack:        'ackEditor',
+      intro:      'introEditor',
+      epilogue:   'epilogueEditor',
+      afterword:  'afterwordEditor',
+      glossary:   'glossaryEditor',
+      bib:        'bibEditor',
+      about:      'aboutEditor',
+      colophon:   'colophonEditor',
+    };
+    Object.entries(data.frontEditors).forEach(([k, v]) => {
+      const el = document.getElementById(map[k]); if (el) el.innerHTML = v;
+    });
     // Show wraps for checked sections
     if (data.sections) {
-      const wrapMap = { hasDedication:'dedicationEditorWrap', hasForeword:'forewordEditorWrap', hasPreface:'prefaceEditorWrap', hasAcknowledgements:'ackEditorWrap', hasIntroduction:'introEditorWrap', hasEpilogue:'epilogueEditorWrap', hasAfterword:'afterwordEditorWrap', hasGlossary:'glossaryEditorWrap', hasBibliography:'bibEditorWrap', hasAboutAuthor:'aboutEditorWrap' };
-      Object.entries(wrapMap).forEach(([sec,wrapId]) => {
+      const wrapMap = {
+        hasCopyrightPage:    'copyrightEditorWrap',
+        hasDedication:       'dedicationEditorWrap',
+        hasForeword:         'forewordEditorWrap',
+        hasPreface:          'prefaceEditorWrap',
+        hasAcknowledgements: 'ackEditorWrap',
+        hasIntroduction:     'introEditorWrap',
+        hasEpilogue:         'epilogueEditorWrap',
+        hasAfterword:        'afterwordEditorWrap',
+        hasGlossary:         'glossaryEditorWrap',
+        hasBibliography:     'bibEditorWrap',
+        hasAboutAuthor:      'aboutEditorWrap',
+        hasColophon:         'colophonEditorWrap',
+      };
+      Object.entries(wrapMap).forEach(([sec, wrapId]) => {
         const wrap = document.getElementById(wrapId);
         if (wrap && data.sections[sec]) wrap.classList.add('visible');
       });
@@ -1058,10 +1142,10 @@ function restoreFromData(data) {
     const s = data.settings;
     if (s.useUnits !== undefined) document.getElementById('useUnits').checked = s.useUnits;
     ['pageSize','fontSize','lineSpacing','marginSize','chapterStyle','colorTheme'].forEach(k => {
-      const el = document.getElementById(k); if(el && s[k]) el.value = s[k];
+      const el = document.getElementById(k); if (el && s[k]) el.value = s[k];
     });
     ['showPageNumbers','showRunningHeader','chapterNewPage'].forEach(k => {
-      const el = document.getElementById(k); if(el && s[k] !== undefined) el.checked = s[k];
+      const el = document.getElementById(k); if (el && s[k] !== undefined) el.checked = s[k];
     });
   }
   if (data.coverImageDataUrl) {
@@ -1072,7 +1156,7 @@ function restoreFromData(data) {
   state.units = data.units || [];
   state.chapters = [];
   state.chapterCounter = data.chapterCounter || 0;
-  state.unitCounter = data.unitCounter || 0;
+  state.unitCounter    = data.unitCounter    || 0;
   document.querySelectorAll('.tab-btn:not([data-tab="welcome"])').forEach(t => t.remove());
   document.querySelectorAll('.tab-content:not(#tab-welcome)').forEach(t => t.remove());
   renderUnits();
@@ -1119,26 +1203,54 @@ function initAutoSave() {
 function saveToLocalStorage() {
   try {
     syncEditorsToState();
-    const frontEditors = {
-      dedication: document.getElementById('dedicationEditor')?.innerHTML||'',
-      foreword: document.getElementById('forewordEditor')?.innerHTML||'',
-      preface: document.getElementById('prefaceEditor')?.innerHTML||'',
-      ack: document.getElementById('ackEditor')?.innerHTML||'',
-      intro: document.getElementById('introEditor')?.innerHTML||'',
-      epilogue: document.getElementById('epilogueEditor')?.innerHTML||'',
-      afterword: document.getElementById('afterwordEditor')?.innerHTML||'',
-      glossary: document.getElementById('glossaryEditor')?.innerHTML||'',
-      bib: document.getElementById('bibEditor')?.innerHTML||'',
-      about: document.getElementById('aboutEditor')?.innerHTML||'',
-    };
     localStorage.setItem('authorpro_autosave', JSON.stringify({
-      meta:{ bookTitle:document.getElementById('bookTitle').value, bookSubtitle:document.getElementById('bookSubtitle').value, authorName:document.getElementById('authorName').value, publisherName:document.getElementById('publisherName').value, pubYear:document.getElementById('pubYear').value, isbnNum:document.getElementById('isbnNum').value, editionNum:document.getElementById('editionNum').value },
-      sections:{ hasTitlePage:document.getElementById('hasTitlePage').checked, hasCopyrightPage:document.getElementById('hasCopyrightPage').checked, hasDedication:document.getElementById('hasDedication').checked, hasForeword:document.getElementById('hasForeword').checked, hasPreface:document.getElementById('hasPreface').checked, hasAcknowledgements:document.getElementById('hasAcknowledgements').checked, hasTOC:document.getElementById('hasTOC').checked, hasIntroduction:document.getElementById('hasIntroduction').checked, hasEpilogue:document.getElementById('hasEpilogue').checked, hasAfterword:document.getElementById('hasAfterword').checked, hasGlossary:document.getElementById('hasGlossary').checked, hasBibliography:document.getElementById('hasBibliography').checked, hasIndex:document.getElementById('hasIndex').checked, hasAboutAuthor:document.getElementById('hasAboutAuthor').checked, hasColophon:document.getElementById('hasColophon').checked },
-      frontEditors, chapters: state.chapters, units: state.units,
-      chapterCounter: state.chapterCounter, unitCounter: state.unitCounter,
+      meta: {
+        bookTitle: document.getElementById('bookTitle').value,
+        bookSubtitle: document.getElementById('bookSubtitle').value,
+        authorName: document.getElementById('authorName').value,
+        publisherName: document.getElementById('publisherName').value,
+        pubYear: document.getElementById('pubYear').value,
+        isbnNum: document.getElementById('isbnNum').value,
+        editionNum: document.getElementById('editionNum').value,
+      },
+      sections: {
+        hasTitlePage: document.getElementById('hasTitlePage').checked,
+        hasCopyrightPage: document.getElementById('hasCopyrightPage').checked,
+        hasDedication: document.getElementById('hasDedication').checked,
+        hasForeword: document.getElementById('hasForeword').checked,
+        hasPreface: document.getElementById('hasPreface').checked,
+        hasAcknowledgements: document.getElementById('hasAcknowledgements').checked,
+        hasTOC: document.getElementById('hasTOC').checked,
+        hasIntroduction: document.getElementById('hasIntroduction').checked,
+        hasEpilogue: document.getElementById('hasEpilogue').checked,
+        hasAfterword: document.getElementById('hasAfterword').checked,
+        hasGlossary: document.getElementById('hasGlossary').checked,
+        hasBibliography: document.getElementById('hasBibliography').checked,
+        hasIndex: document.getElementById('hasIndex').checked,
+        hasAboutAuthor: document.getElementById('hasAboutAuthor').checked,
+        hasColophon: document.getElementById('hasColophon').checked,
+      },
+      frontEditors: {
+        copyright:  document.getElementById('copyrightEditor')?.innerHTML  || '',
+        dedication: document.getElementById('dedicationEditor')?.innerHTML || '',
+        foreword:   document.getElementById('forewordEditor')?.innerHTML   || '',
+        preface:    document.getElementById('prefaceEditor')?.innerHTML    || '',
+        ack:        document.getElementById('ackEditor')?.innerHTML        || '',
+        intro:      document.getElementById('introEditor')?.innerHTML      || '',
+        epilogue:   document.getElementById('epilogueEditor')?.innerHTML   || '',
+        afterword:  document.getElementById('afterwordEditor')?.innerHTML  || '',
+        glossary:   document.getElementById('glossaryEditor')?.innerHTML   || '',
+        bib:        document.getElementById('bibEditor')?.innerHTML        || '',
+        about:      document.getElementById('aboutEditor')?.innerHTML      || '',
+        colophon:   document.getElementById('colophonEditor')?.innerHTML   || '',
+      },
+      chapters: state.chapters,
+      units: state.units,
+      chapterCounter: state.chapterCounter,
+      unitCounter: state.unitCounter,
       coverImageDataUrl: state.coverImageDataUrl,
     }));
-  } catch(e) { /* localStorage full */ }
+  } catch (e) { /* localStorage full */ }
 }
 
 function loadFromLocalStorage() {
@@ -1150,7 +1262,7 @@ function loadFromLocalStorage() {
       restoreFromData(data);
       showToast('✓ Auto-save restored', 'success');
     }
-  } catch(e) {}
+  } catch (e) { /* ignore */ }
 }
 
 // ===== FAQ =====
@@ -1164,12 +1276,15 @@ function toggleFaq(btn) {
 
 // ===== TOAST =====
 let _toastTimer;
-function showToast(msg, type='') {
+function showToast(msg, type = '') {
   let t = document.getElementById('_ap_toast');
   if (!t) { t = document.createElement('div'); t.id = '_ap_toast'; t.className = 'toast'; document.body.appendChild(t); }
   t.textContent = msg; t.className = `toast ${type}`;
   clearTimeout(_toastTimer);
-  requestAnimationFrame(() => { t.classList.add('show'); _toastTimer = setTimeout(() => t.classList.remove('show'), 3500); });
+  requestAnimationFrame(() => {
+    t.classList.add('show');
+    _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+  });
 }
 
 // ===== UTILITY =====
@@ -1185,9 +1300,9 @@ document.addEventListener('click', e => {
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
-  if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); saveProgress(); }
-  if ((e.ctrlKey||e.metaKey) && e.key==='p') { e.preventDefault(); togglePreview(); }
-  if (e.key==='Escape') {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveProgress(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'p') { e.preventDefault(); togglePreview(); }
+  if (e.key === 'Escape') {
     document.getElementById('previewModal').classList.remove('active');
     document.getElementById('wordCountModal').classList.remove('active');
   }
