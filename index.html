@@ -8,714 +8,503 @@
   <meta name="author" content="Avinash Walton" />
   <meta name="robots" content="index, follow" />
   <meta name="theme-color" content="#1a0a2e" />
-
-  <!-- Open Graph -->
   <meta property="og:title" content="AuthorPro – Manuscript Formatter for Authors" />
   <meta property="og:description" content="Format your manuscript into professional PDF or EPUB — title page, preface, chapters, units & more. Free, instant, no signup." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://avinashwalton.github.io/AuthorPro/" />
   <meta property="og:image" content="https://avinashwalton.github.io/AuthorPro/og-image.png" />
   <meta property="og:site_name" content="AuthorPro" />
-
-  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@AvinashWalton" />
   <meta name="twitter:creator" content="@AvinashWalton" />
   <meta name="twitter:title" content="AuthorPro – Manuscript Formatter for Authors" />
   <meta name="twitter:description" content="Format your manuscript into PDF or EPUB with chapters, units, title page & more. Free tool for authors." />
-  <meta name="twitter:image" content="https://avinashwalton.github.io/AuthorPro/og-image.png" />
-
-  <!-- Canonical -->
   <link rel="canonical" href="https://avinashwalton.github.io/AuthorPro/" />
-
-  <!-- Structured Data -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "AuthorPro",
-    "url": "https://avinashwalton.github.io/AuthorPro/",
-    "description": "Free online manuscript formatter for authors. Format books into PDF or EPUB.",
-    "applicationCategory": "UtilitiesApplication",
-    "operatingSystem": "Web",
-    "author": {
-      "@type": "Person",
-      "name": "Avinash Walton",
-      "url": "https://youtube.com/@AvinashWalton"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "INR"
-    }
-  }
-  </script>
-
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"AuthorPro","url":"https://avinashwalton.github.io/AuthorPro/","description":"Free online manuscript formatter for authors.","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","author":{"@type":"Person","name":"Avinash Walton","url":"https://youtube.com/@AvinashWalton"},"offers":{"@type":"Offer","price":"0","priceCurrency":"INR"}}</script>
   <title>AuthorPro – Free Manuscript Formatter for Authors | PDF & EPUB</title>
-
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-
-  <!-- jsPDF & epub.js for export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- ===== HERO / LANDING ===== -->
-  <header class="hero" id="top">
-    <div class="hero-bg">
-      <div class="hero-orb orb1"></div>
-      <div class="hero-orb orb2"></div>
-      <div class="hero-orb orb3"></div>
-      <div class="lines-grid"></div>
+<!-- HERO -->
+<header class="hero" id="top">
+  <div class="hero-bg">
+    <div class="hero-orb orb1"></div><div class="hero-orb orb2"></div><div class="hero-orb orb3"></div>
+    <div class="lines-grid"></div>
+  </div>
+  <nav class="navbar">
+    <div class="nav-brand"><span class="brand-icon">✦</span><span class="brand-name">AuthorPro</span></div>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li><li><a href="#formatter">Formatter</a></li><li><a href="#faq">FAQ</a></li>
+    </ul>
+    <button class="btn-primary nav-cta" onclick="scrollToFormatter()">Start Writing →</button>
+    <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+  </nav>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#features" onclick="closeMobileMenu()">Features</a>
+    <a href="#formatter" onclick="closeMobileMenu()">Formatter</a>
+    <a href="#faq" onclick="closeMobileMenu()">FAQ</a>
+    <button class="btn-primary" onclick="scrollToFormatter();closeMobileMenu()">Start Writing →</button>
+  </div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">For Authors, By Passion</p>
+    <h1 class="hero-title">Turn Your<br /><em>Manuscript</em><br />Into a <span class="gradient-text">Published Book</span></h1>
+    <p class="hero-sub">Format your writing into professional <strong>PDF</strong> or <strong>EPUB</strong> — complete with title page, preface, acknowledgements, chapters, units, headers & more. No signup. Completely free.</p>
+    <div class="hero-btns">
+      <button class="btn-primary btn-lg" onclick="scrollToFormatter()">Open Formatter <span>→</span></button>
+      <a href="#features" class="btn-ghost btn-lg">See Features</a>
     </div>
-    <nav class="navbar">
-      <div class="nav-brand">
-        <span class="brand-icon">✦</span>
-        <span class="brand-name">AuthorPro</span>
-      </div>
-      <ul class="nav-links">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#formatter">Formatter</a></li>
-        <li><a href="#faq">FAQ</a></li>
-      </ul>
-      <button class="btn-primary nav-cta" onclick="scrollToFormatter()">Start Writing →</button>
-      <button class="hamburger" id="hamburger" aria-label="Menu">
-        <span></span><span></span><span></span>
-      </button>
-    </nav>
-    <div class="mobile-menu" id="mobileMenu">
-      <a href="#features" onclick="closeMobileMenu()">Features</a>
-      <a href="#formatter" onclick="closeMobileMenu()">Formatter</a>
-      <a href="#faq" onclick="closeMobileMenu()">FAQ</a>
-      <button class="btn-primary" onclick="scrollToFormatter(); closeMobileMenu()">Start Writing →</button>
+    <div class="hero-badges">
+      <span>📄 PDF Export</span><span>📱 EPUB Export</span><span>🆓 100% Free</span><span>🔒 No Signup</span><span>🌐 Hindi Support</span>
     </div>
+  </div>
+</header>
 
-    <div class="hero-content">
-      <p class="hero-eyebrow">For Authors, By Passion</p>
-      <h1 class="hero-title">
-        Turn Your<br />
-        <em>Manuscript</em><br />
-        Into a <span class="gradient-text">Published Book</span>
-      </h1>
-      <p class="hero-sub">
-        Format your writing into professional <strong>PDF</strong> or <strong>EPUB</strong> — complete with title page, preface, acknowledgements, chapters, units, headers & more. No signup. Completely free.
-      </p>
-      <div class="hero-btns">
-        <button class="btn-primary btn-lg" onclick="scrollToFormatter()">
-          Open Formatter <span>→</span>
-        </button>
-        <a href="#features" class="btn-ghost btn-lg">See Features</a>
-      </div>
-      <div class="hero-badges">
-        <span>📄 PDF Export</span>
-        <span>📱 EPUB Export</span>
-        <span>🆓 100% Free</span>
-        <span>🔒 No Signup</span>
-      </div>
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="container">
+    <p class="section-eyebrow">Everything You Need</p>
+    <h2 class="section-title">Powerful Features for Every Author</h2>
+    <div class="features-grid">
+      <div class="feature-card"><div class="feature-icon">📖</div><h3>Pre-Built Sections</h3><p>Title page, preface, foreword, acknowledgements, dedication, table of contents, index — all optional, all beautifully formatted.</p></div>
+      <div class="feature-card"><div class="feature-icon">🗂️</div><h3>Units & Chapters</h3><p>Organize with Units (parts) and Chapters. Use units or skip them — your choice.</p></div>
+      <div class="feature-card"><div class="feature-icon">✍️</div><h3>Rich Text Editor</h3><p>Full formatting toolbar — bold, italic, headings, lists, quotes, alignment, font size, color, tables, and more.</p></div>
+      <div class="feature-card"><div class="feature-icon">📋</div><h3>Paste Your Manuscript</h3><p>Already written? Just paste from Word or Google Docs. Formatting is preserved.</p></div>
+      <div class="feature-card"><div class="feature-icon">🔖</div><h3>Running Headers</h3><p>Even pages: book title. Odd pages: chapter title. Unit pages: no header. Professional publishing standard.</p></div>
+      <div class="feature-card"><div class="feature-icon">🖼️</div><h3>Cover Image</h3><p>Upload a cover — it appears full-page as the first page in your PDF with no header or page number.</p></div>
+      <div class="feature-card"><div class="feature-icon">🌐</div><h3>Hindi & Unicode</h3><p>Write in Hindi, Bengali, Tamil, or any language. Unicode is fully preserved in PDF and EPUB.</p></div>
+      <div class="feature-card"><div class="feature-icon">📤</div><h3>PDF & EPUB Export</h3><p>Download as print-ready PDF or device-friendly EPUB in one click.</p></div>
+      <div class="feature-card"><div class="feature-icon">📱</div><h3>Works Everywhere</h3><p>Fully responsive — write on phone, tablet, or desktop. Progress auto-saved locally.</p></div>
     </div>
-  </header>
+  </div>
+</section>
 
-  <!-- ===== FEATURES ===== -->
-  <section class="features-section" id="features">
-    <div class="container">
-      <p class="section-eyebrow">Everything You Need</p>
-      <h2 class="section-title">Powerful Features for Every Author</h2>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">📖</div>
-          <h3>Pre-Built Sections</h3>
-          <p>Title page, preface, foreword, acknowledgements, dedication, table of contents, index — all optional, all beautifully formatted.</p>
+<!-- FORMATTER -->
+<section class="formatter-section" id="formatter">
+  <div class="container-wide">
+    <p class="section-eyebrow">The Tool</p>
+    <h2 class="section-title">Manuscript Formatter</h2>
+    <p class="section-sub">Fill in what you need. Skip what you don't. Book Title and Author Name are required.</p>
+
+    <div class="app-layout">
+
+      <!-- LEFT PANEL -->
+      <div class="panel panel-left" id="panelLeft">
+        <div class="panel-header">
+          <h3>📚 Book Structure</h3>
+          <button class="panel-toggle" id="toggleLeft" title="Collapse">‹</button>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">🗂️</div>
-          <h3>Units & Chapters</h3>
-          <p>Organize your book with Units (parts) and Chapters. Use units, skip them — your choice. Add as many chapters as you need.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">✍️</div>
-          <h3>Rich Text Editor</h3>
-          <p>Full formatting toolbar — bold, italic, headings, lists, quotes, alignment, font size, color, tables, and more.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📋</div>
-          <h3>Paste Your Manuscript</h3>
-          <p>Already written your book? Just paste it in. Our editor accepts pasted content with formatting preserved.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔖</div>
-          <h3>Running Headers</h3>
-          <p>Book title on the left, chapter title on the right in PDF headers — professional publishing standard.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📤</div>
-          <h3>PDF & EPUB Export</h3>
-          <p>Download your formatted book as a print-ready PDF or a device-friendly EPUB file in one click.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🎨</div>
-          <h3>Style Customization</h3>
-          <p>Choose fonts, font sizes, page margins, line spacing, chapter heading styles, and color themes.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📱</div>
-          <h3>Works Everywhere</h3>
-          <p>Fully responsive — write on your phone, tablet, or desktop. Your progress is auto-saved locally.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔢</div>
-          <h3>Page Numbering</h3>
-          <p>Automatic page numbers — choose position (bottom center, bottom right), style (arabic, roman for front matter).</p>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- ===== MAIN FORMATTER APP ===== -->
-  <section class="formatter-section" id="formatter">
-    <div class="container-wide">
-      <p class="section-eyebrow">The Tool</p>
-      <h2 class="section-title">Manuscript Formatter</h2>
-      <p class="section-sub">Fill in what you need. Skip what you don't. Everything is optional.</p>
-
-      <div class="app-layout">
-
-        <!-- LEFT PANEL: Structure Builder -->
-        <div class="panel panel-left" id="panelLeft">
-          <div class="panel-header">
-            <h3>📚 Book Structure</h3>
-            <button class="panel-toggle" id="toggleLeft" title="Collapse">‹</button>
-          </div>
-
-          <!-- Book Metadata -->
-          <div class="section-block" id="metaBlock">
-            <div class="section-block-header" onclick="toggleBlock('metaBody')">
-              <span>📝 Book Details</span>
-              <span class="chevron">▾</span>
-            </div>
-            <div class="section-block-body" id="metaBody">
-              <label>Book Title <span class="opt">(optional)</span></label>
-              <input type="text" id="bookTitle" placeholder="e.g. The Midnight Echo" />
-
-              <label>Subtitle <span class="opt">(optional)</span></label>
-              <input type="text" id="bookSubtitle" placeholder="e.g. A Novel of Shadows" />
-
-              <label>Author Name <span class="opt">(optional)</span></label>
-              <input type="text" id="authorName" placeholder="e.g. Avinash Walton" />
-
-              <label>Publisher <span class="opt">(optional)</span></label>
-              <input type="text" id="publisherName" placeholder="e.g. Walton Press" />
-
-              <label>Year <span class="opt">(optional)</span></label>
-              <input type="text" id="pubYear" placeholder="e.g. 2025" />
-
-              <label>ISBN <span class="opt">(optional)</span></label>
-              <input type="text" id="isbnNum" placeholder="e.g. 978-0-000000-00-0" />
-
-              <label>Edition <span class="opt">(optional)</span></label>
-              <input type="text" id="editionNum" placeholder="e.g. First Edition" />
-
-              <label>Cover Image <span class="opt">(optional)</span></label>
-              <input type="file" id="coverImage" accept="image/*" />
+        <!-- BOOK DETAILS — FIX #5 -->
+        <div class="section-block">
+          <div class="section-block-header" onclick="toggleBlock('metaBody')"><span>📝 Book Details</span><span class="chevron">▾</span></div>
+          <div class="section-block-body" id="metaBody">
+            <label>Book Title <span class="req-badge">Required</span></label>
+            <input type="text" id="bookTitle" placeholder="e.g. The Midnight Echo" />
+            <label>Subtitle</label>
+            <input type="text" id="bookSubtitle" placeholder="e.g. A Novel of Shadows" />
+            <label>Author Name <span class="req-badge">Required</span></label>
+            <input type="text" id="authorName" placeholder="e.g. Avinash Walton" />
+            <label>Publisher</label>
+            <input type="text" id="publisherName" placeholder="e.g. Walton Press" />
+            <label>Year</label>
+            <input type="text" id="pubYear" placeholder="e.g. 2025" />
+            <label>ISBN</label>
+            <input type="text" id="isbnNum" placeholder="e.g. 978-0-000000-00-0" />
+            <label>Edition</label>
+            <input type="text" id="editionNum" placeholder="e.g. First Edition" />
+            <!-- FIX #6: Cover image -->
+            <label>Cover Image</label>
+            <input type="file" id="coverImage" accept="image/*" onchange="onCoverImageChange(event)" />
+            <div id="coverPreviewWrap" style="display:none;margin-top:6px;">
+              <img id="coverPreview" src="" alt="Cover Preview" style="width:100%;border-radius:6px;border:1px solid rgba(255,255,255,0.12);" />
+              <button onclick="removeCover()" style="margin-top:6px;width:100%;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);color:#ff9999;border-radius:6px;padding:5px;cursor:pointer;font-size:0.78rem;">✕ Remove Cover</button>
             </div>
           </div>
+        </div>
 
-          <!-- Front Matter -->
-          <div class="section-block" id="frontMatterBlock">
-            <div class="section-block-header" onclick="toggleBlock('frontMatterBody')">
-              <span>📄 Front Matter</span>
-              <span class="chevron">▾</span>
+        <!-- FRONT MATTER — FIX #7: editable sections -->
+        <div class="section-block">
+          <div class="section-block-header" onclick="toggleBlock('frontMatterBody')"><span>📄 Front Matter</span><span class="chevron">▾</span></div>
+          <div class="section-block-body" id="frontMatterBody">
+            <label class="toggle-item"><input type="checkbox" id="hasTitlePage" checked /> Title Page <small>(auto)</small></label>
+            <label class="toggle-item"><input type="checkbox" id="hasCopyrightPage" /> Copyright Page <small>(auto)</small></label>
+            <!-- editable front matter items -->
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasDedication" onchange="toggleFrontEditor('dedicationEditorWrap',this.checked)" /> Dedication</label>
+              <div class="front-sec-wrap" id="dedicationEditorWrap">
+                <div class="front-editor" id="dedicationEditor" contenteditable="true" data-placeholder="Write your dedication here..."></div>
+              </div>
             </div>
-            <div class="section-block-body" id="frontMatterBody">
-              <div class="section-toggles">
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasTitlePage" checked /> Title Page
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasCopyrightPage" /> Copyright Page
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasDedication" /> Dedication
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasForeword" /> Foreword
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasPreface" /> Preface
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasAcknowledgements" /> Acknowledgements
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasTOC" checked /> Table of Contents
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasIntroduction" /> Introduction
-                </label>
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasForeword" onchange="toggleFrontEditor('forewordEditorWrap',this.checked)" /> Foreword</label>
+              <div class="front-sec-wrap" id="forewordEditorWrap">
+                <div class="front-editor" id="forewordEditor" contenteditable="true" data-placeholder="Write the foreword here..."></div>
+              </div>
+            </div>
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasPreface" onchange="toggleFrontEditor('prefaceEditorWrap',this.checked)" /> Preface</label>
+              <div class="front-sec-wrap" id="prefaceEditorWrap">
+                <div class="front-editor" id="prefaceEditor" contenteditable="true" data-placeholder="Write your preface here..."></div>
+              </div>
+            </div>
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasAcknowledgements" onchange="toggleFrontEditor('ackEditorWrap',this.checked)" /> Acknowledgements</label>
+              <div class="front-sec-wrap" id="ackEditorWrap">
+                <div class="front-editor" id="ackEditor" contenteditable="true" data-placeholder="Write your acknowledgements here..."></div>
+              </div>
+            </div>
+            <label class="toggle-item"><input type="checkbox" id="hasTOC" checked /> Table of Contents <small>(auto)</small></label>
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasIntroduction" onchange="toggleFrontEditor('introEditorWrap',this.checked)" /> Introduction</label>
+              <div class="front-sec-wrap" id="introEditorWrap">
+                <div class="front-editor" id="introEditor" contenteditable="true" data-placeholder="Write your introduction here..."></div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Back Matter -->
-          <div class="section-block">
-            <div class="section-block-header" onclick="toggleBlock('backMatterBody')">
-              <span>📋 Back Matter</span>
-              <span class="chevron">▾</span>
-            </div>
-            <div class="section-block-body" id="backMatterBody">
-              <div class="section-toggles">
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasEpilogue" /> Epilogue
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasAfterword" /> Afterword
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasGlossary" /> Glossary
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasBibliography" /> Bibliography / References
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasIndex" /> Index
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasAboutAuthor" /> About the Author
-                </label>
-                <label class="toggle-item">
-                  <input type="checkbox" id="hasColophon" /> Colophon
-                </label>
+        <!-- BACK MATTER — FIX #7 -->
+        <div class="section-block">
+          <div class="section-block-header" onclick="toggleBlock('backMatterBody')"><span>📋 Back Matter</span><span class="chevron">▾</span></div>
+          <div class="section-block-body" id="backMatterBody">
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasEpilogue" onchange="toggleFrontEditor('epilogueEditorWrap',this.checked)" /> Epilogue</label>
+              <div class="front-sec-wrap" id="epilogueEditorWrap">
+                <div class="front-editor" id="epilogueEditor" contenteditable="true" data-placeholder="Write your epilogue here..."></div>
               </div>
             </div>
-          </div>
-
-          <!-- Units & Chapters -->
-          <div class="section-block">
-            <div class="section-block-header" onclick="toggleBlock('chaptersBody')">
-              <span>🗂️ Units & Chapters</span>
-              <span class="chevron">▾</span>
-            </div>
-            <div class="section-block-body" id="chaptersBody">
-              <label class="toggle-item" style="margin-bottom:12px;">
-                <input type="checkbox" id="useUnits" onchange="toggleUnitMode()" />
-                Use Units (Parts / Sections)
-              </label>
-
-              <div id="unitsContainer"></div>
-
-              <div class="btn-row">
-                <button class="btn-add" onclick="addUnit()" id="addUnitBtn" style="display:none;">+ Add Unit</button>
-                <button class="btn-add" onclick="addChapter(null)">+ Add Chapter</button>
-              </div>
-
-              <div id="chaptersContainer" class="chapters-list"></div>
-            </div>
-          </div>
-
-          <!-- Page Settings -->
-          <div class="section-block">
-            <div class="section-block-header" onclick="toggleBlock('pageSettingsBody')">
-              <span>⚙️ Page Settings</span>
-              <span class="chevron">▾</span>
-            </div>
-            <div class="section-block-body" id="pageSettingsBody">
-              <label>Page Size</label>
-              <select id="pageSize">
-                <option value="A4">A4 (210×297mm)</option>
-                <option value="A5" selected>A5 (148×210mm)</option>
-                <option value="Letter">Letter (8.5×11in)</option>
-                <option value="6x9">6×9 inch (Trade)</option>
-                <option value="5x8">5×8 inch (Pocket)</option>
-              </select>
-
-              <label>Body Font</label>
-              <select id="bodyFont">
-                <option value="Georgia">Georgia (Serif)</option>
-                <option value="Palatino">Palatino Linotype</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Garamond">Garamond</option>
-                <option value="Crimson Pro" selected>Crimson Pro</option>
-                <option value="Arial">Arial (Sans)</option>
-                <option value="Helvetica">Helvetica</option>
-              </select>
-
-              <label>Font Size (Body)</label>
-              <select id="fontSize">
-                <option value="10">10pt</option>
-                <option value="11" selected>11pt</option>
-                <option value="12">12pt</option>
-                <option value="13">13pt</option>
-                <option value="14">14pt</option>
-              </select>
-
-              <label>Line Spacing</label>
-              <select id="lineSpacing">
-                <option value="1.2">Compact (1.2×)</option>
-                <option value="1.5" selected>Normal (1.5×)</option>
-                <option value="1.8">Relaxed (1.8×)</option>
-                <option value="2.0">Double (2.0×)</option>
-              </select>
-
-              <label>Margins</label>
-              <select id="marginSize">
-                <option value="narrow">Narrow (15mm)</option>
-                <option value="normal" selected>Normal (20mm)</option>
-                <option value="wide">Wide (25mm)</option>
-                <option value="mirror">Mirror Margins</option>
-              </select>
-
-              <label>Chapter Heading Style</label>
-              <select id="chapterStyle">
-                <option value="classic">Classic (Chapter 1 / Title)</option>
-                <option value="modern">Modern (Large Number)</option>
-                <option value="minimal">Minimal (Title only)</option>
-                <option value="ornate">Ornate (with decorators)</option>
-              </select>
-
-              <label>Color Theme</label>
-              <select id="colorTheme">
-                <option value="black">Classic Black</option>
-                <option value="navy">Navy Blue</option>
-                <option value="sepia">Sepia / Warm</option>
-                <option value="forest">Forest Green</option>
-              </select>
-
-              <label class="toggle-item" style="margin-top:8px;">
-                <input type="checkbox" id="showPageNumbers" checked /> Show Page Numbers
-              </label>
-              <label class="toggle-item">
-                <input type="checkbox" id="showRunningHeader" checked /> Running Headers (Book | Chapter)
-              </label>
-              <label class="toggle-item">
-                <input type="checkbox" id="chapterNewPage" checked /> Each Chapter Starts on New Page
-              </label>
-            </div>
-          </div>
-
-          <!-- Export -->
-          <div class="export-panel">
-            <h3>📤 Export Your Book</h3>
-            <div class="export-format">
-              <label>Export Format</label>
-              <div class="format-btns">
-                <button class="format-btn active" id="fmtPDF" onclick="setFormat('pdf')">📄 PDF</button>
-                <button class="format-btn" id="fmtEPUB" onclick="setFormat('epub')">📱 EPUB</button>
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasAfterword" onchange="toggleFrontEditor('afterwordEditorWrap',this.checked)" /> Afterword</label>
+              <div class="front-sec-wrap" id="afterwordEditorWrap">
+                <div class="front-editor" id="afterwordEditor" contenteditable="true" data-placeholder="Write your afterword here..."></div>
               </div>
             </div>
-            <button class="btn-export" onclick="exportBook()">
-              <span id="exportBtnText">Generate PDF</span>
-              <span class="export-spinner" id="exportSpinner" style="display:none;">⏳</span>
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasGlossary" onchange="toggleFrontEditor('glossaryEditorWrap',this.checked)" /> Glossary</label>
+              <div class="front-sec-wrap" id="glossaryEditorWrap">
+                <div class="front-editor" id="glossaryEditor" contenteditable="true" data-placeholder="Write your glossary here..."></div>
+              </div>
+            </div>
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasBibliography" onchange="toggleFrontEditor('bibEditorWrap',this.checked)" /> Bibliography / References</label>
+              <div class="front-sec-wrap" id="bibEditorWrap">
+                <div class="front-editor" id="bibEditor" contenteditable="true" data-placeholder="Write your bibliography here..."></div>
+              </div>
+            </div>
+            <label class="toggle-item"><input type="checkbox" id="hasIndex" /> Index <small>(auto)</small></label>
+            <div class="front-matter-item">
+              <label class="toggle-item"><input type="checkbox" id="hasAboutAuthor" onchange="toggleFrontEditor('aboutEditorWrap',this.checked)" /> About the Author</label>
+              <div class="front-sec-wrap" id="aboutEditorWrap">
+                <div class="front-editor" id="aboutEditor" contenteditable="true" data-placeholder="Write your bio here..."></div>
+              </div>
+            </div>
+            <label class="toggle-item"><input type="checkbox" id="hasColophon" /> Colophon <small>(auto)</small></label>
+          </div>
+        </div>
+
+        <!-- UNITS & CHAPTERS — FIX #3 #4 -->
+        <div class="section-block">
+          <div class="section-block-header" onclick="toggleBlock('chaptersBody')"><span>🗂️ Units & Chapters</span><span class="chevron">▾</span></div>
+          <div class="section-block-body" id="chaptersBody">
+            <label class="toggle-item" style="margin-bottom:4px;">
+              <input type="checkbox" id="useUnits" onchange="toggleUnitMode()" />Use Units (Parts / Sections)
+            </label>
+            <div id="unitsContainer"></div>
+            <div class="btn-row">
+              <button class="btn-add" onclick="addUnit()" id="addUnitBtn" style="display:none;">+ Add Unit</button>
+              <button class="btn-add" onclick="addChapter(null)">+ Add Chapter</button>
+            </div>
+            <div id="chaptersContainer" class="chapters-list"></div>
+          </div>
+        </div>
+
+        <!-- PAGE SETTINGS — FIX #8 #9 -->
+        <div class="section-block">
+          <div class="section-block-header" onclick="toggleBlock('pageSettingsBody')"><span>⚙️ Page Settings</span><span class="chevron">▾</span></div>
+          <div class="section-block-body" id="pageSettingsBody">
+            <label>Page Size</label>
+            <select id="pageSize">
+              <option value="A4">A4 (210×297mm)</option>
+              <option value="A5" selected>A5 (148×210mm)</option>
+              <option value="Letter">Letter (8.5×11in)</option>
+              <option value="6x9">6×9 inch (Trade)</option>
+              <option value="5x8">5×8 inch (Pocket)</option>
+            </select>
+            <label>Font Size (Body)</label>
+            <select id="fontSize">
+              <option value="10">10pt</option><option value="11" selected>11pt</option>
+              <option value="12">12pt</option><option value="13">13pt</option><option value="14">14pt</option>
+            </select>
+            <label>Line Spacing</label>
+            <select id="lineSpacing">
+              <option value="1.2">Compact (1.2×)</option><option value="1.5" selected>Normal (1.5×)</option>
+              <option value="1.8">Relaxed (1.8×)</option><option value="2.0">Double (2.0×)</option>
+            </select>
+            <label>Margins</label>
+            <select id="marginSize">
+              <option value="15">Narrow (15mm)</option><option value="20" selected>Normal (20mm)</option><option value="25">Wide (25mm)</option>
+            </select>
+            <!-- FIX #8: All heading styles work correctly -->
+            <label>Chapter Heading Style</label>
+            <select id="chapterStyle">
+              <option value="classic" selected>Classic (CHAPTER N + Title)</option>
+              <option value="modern">Modern (Large Number + Title)</option>
+              <option value="minimal">Minimal (Title Only, centered)</option>
+              <option value="ornate">Ornate (✦ Decorated ✦)</option>
+            </select>
+            <label>Color Theme</label>
+            <select id="colorTheme">
+              <option value="black" selected>Classic Black</option>
+              <option value="navy">Navy Blue</option>
+              <option value="sepia">Sepia / Warm</option>
+              <option value="forest">Forest Green</option>
+            </select>
+            <label class="toggle-item" style="margin-top:6px;"><input type="checkbox" id="showPageNumbers" checked /> Show Page Numbers</label>
+            <!-- FIX #9: Even/odd running header description -->
+            <label class="toggle-item">
+              <input type="checkbox" id="showRunningHeader" checked /> Running Headers <small>(Even: Book | Odd: Chapter)</small>
+            </label>
+            <label class="toggle-item"><input type="checkbox" id="chapterNewPage" checked /> Each Chapter on New Page</label>
+          </div>
+        </div>
+
+        <!-- EXPORT -->
+        <div class="export-panel">
+          <h3>📤 Export Your Book</h3>
+          <div class="export-format">
+            <label>Export Format</label>
+            <div class="format-btns">
+              <button class="format-btn active" id="fmtPDF" onclick="setFormat('pdf')">📄 PDF</button>
+              <button class="format-btn" id="fmtEPUB" onclick="setFormat('epub')">📱 EPUB</button>
+            </div>
+          </div>
+          <button class="btn-export" onclick="exportBook()">
+            <span id="exportBtnText">Generate PDF</span>
+            <span id="exportSpinner" style="display:none;">⏳</span>
+          </button>
+          <button class="btn-save" onclick="saveProgress()">💾 Save Progress</button>
+          <button class="btn-load" onclick="loadProgress()">📂 Load Saved</button>
+          <button class="btn-clear" onclick="clearAll()">🗑️ Clear All</button>
+        </div>
+      </div><!-- end panel-left -->
+
+      <!-- RIGHT PANEL -->
+      <div class="panel panel-right" id="panelRight">
+        <div class="panel-header">
+          <div class="editor-tabs" id="editorTabs">
+            <button class="tab-btn active" data-tab="welcome" onclick="switchTab('welcome')">Welcome</button>
+          </div>
+          <div class="panel-actions">
+            <button class="icon-btn" title="Word Count" onclick="showWordCount()">🔢</button>
+            <button class="icon-btn" title="Preview" onclick="togglePreview()">👁️</button>
+            <button class="icon-btn" title="Full Screen" onclick="toggleFullscreen()">⛶</button>
+          </div>
+        </div>
+
+        <!-- TOOLBAR — FIX #1: SVG icons for alignment, all inside proper bounds -->
+        <div class="editor-toolbar" id="editorToolbar">
+          <div class="toolbar-group">
+            <select class="toolbar-select ts-style" title="Style" onchange="execFormat('formatBlock',this.value);this.value=''">
+              <option value="">Style</option>
+              <option value="h1">H1</option><option value="h2">H2</option><option value="h3">H3</option>
+              <option value="h4">H4</option><option value="p">Para</option>
+              <option value="blockquote">Quote</option><option value="pre">Code</option>
+            </select>
+            <select class="toolbar-select ts-font" title="Font" onchange="execFormat('fontName',this.value);this.value=''">
+              <option value="">Font</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Times New Roman">Times NR</option>
+              <option value="Arial">Arial</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Courier New">Courier</option>
+            </select>
+            <select class="toolbar-select ts-size" title="Size" onchange="execFormat('fontSize',this.value);this.value=''">
+              <option value="">Sz</option>
+              <option value="1">8</option><option value="2">10</option><option value="3">12</option>
+              <option value="4">14</option><option value="5">18</option><option value="6">24</option><option value="7">36</option>
+            </select>
+          </div>
+          <div class="toolbar-divider"></div>
+          <div class="toolbar-group">
+            <button class="tool-btn" title="Bold" onclick="execFormat('bold')"><b>B</b></button>
+            <button class="tool-btn" title="Italic" onclick="execFormat('italic')"><i>I</i></button>
+            <button class="tool-btn" title="Underline" onclick="execFormat('underline')"><u>U</u></button>
+            <button class="tool-btn" title="Strikethrough" onclick="execFormat('strikeThrough')"><s>S</s></button>
+            <button class="tool-btn tool-sm" title="Superscript" onclick="execFormat('superscript')">x²</button>
+            <button class="tool-btn tool-sm" title="Subscript" onclick="execFormat('subscript')">x₂</button>
+          </div>
+          <div class="toolbar-divider"></div>
+          <!-- FIX #1: Alignment with inline SVG, all contained within 28x28 -->
+          <div class="toolbar-group">
+            <button class="tool-btn" title="Align Left" onclick="execFormat('justifyLeft')">
+              <svg width="13" height="12" viewBox="0 0 13 12"><rect y="0" width="13" height="2" rx="1" fill="currentColor"/><rect y="3.5" width="9" height="2" rx="1" fill="currentColor"/><rect y="7" width="13" height="2" rx="1" fill="currentColor"/><rect y="10.5" width="7" height="1.5" rx="0.75" fill="currentColor"/></svg>
             </button>
-            <button class="btn-save" onclick="saveProgress()">💾 Save Progress</button>
-            <button class="btn-load" onclick="loadProgress()">📂 Load Saved</button>
-            <button class="btn-clear" onclick="clearAll()">🗑️ Clear All</button>
+            <button class="tool-btn" title="Center" onclick="execFormat('justifyCenter')">
+              <svg width="13" height="12" viewBox="0 0 13 12"><rect y="0" width="13" height="2" rx="1" fill="currentColor"/><rect x="2" y="3.5" width="9" height="2" rx="1" fill="currentColor"/><rect y="7" width="13" height="2" rx="1" fill="currentColor"/><rect x="3" y="10.5" width="7" height="1.5" rx="0.75" fill="currentColor"/></svg>
+            </button>
+            <button class="tool-btn" title="Align Right" onclick="execFormat('justifyRight')">
+              <svg width="13" height="12" viewBox="0 0 13 12"><rect y="0" width="13" height="2" rx="1" fill="currentColor"/><rect x="4" y="3.5" width="9" height="2" rx="1" fill="currentColor"/><rect y="7" width="13" height="2" rx="1" fill="currentColor"/><rect x="6" y="10.5" width="7" height="1.5" rx="0.75" fill="currentColor"/></svg>
+            </button>
+            <button class="tool-btn" title="Justify" onclick="execFormat('justifyFull')">
+              <svg width="13" height="12" viewBox="0 0 13 12"><rect y="0" width="13" height="2" rx="1" fill="currentColor"/><rect y="3.5" width="13" height="2" rx="1" fill="currentColor"/><rect y="7" width="13" height="2" rx="1" fill="currentColor"/><rect y="10.5" width="13" height="1.5" rx="0.75" fill="currentColor"/></svg>
+            </button>
           </div>
-
+          <div class="toolbar-divider"></div>
+          <div class="toolbar-group">
+            <button class="tool-btn tool-sm" title="Ordered List" onclick="execFormat('insertOrderedList')">1≡</button>
+            <button class="tool-btn tool-sm" title="Bullet List" onclick="execFormat('insertUnorderedList')">•≡</button>
+            <button class="tool-btn" title="Indent" onclick="execFormat('indent')">→|</button>
+            <button class="tool-btn" title="Outdent" onclick="execFormat('outdent')">|←</button>
+          </div>
+          <div class="toolbar-divider"></div>
+          <div class="toolbar-group">
+            <button class="tool-btn" title="Insert Link" onclick="insertLink()">🔗</button>
+            <button class="tool-btn" title="Insert Image URL" onclick="insertImageUrl()">🖼️</button>
+            <button class="tool-btn" title="Insert Table" onclick="insertTable()">⊞</button>
+            <button class="tool-btn" title="Horizontal Rule" onclick="execFormat('insertHorizontalRule')">—</button>
+            <button class="tool-btn" title="Page Break" onclick="insertPageBreak()">⏎</button>
+          </div>
+          <div class="toolbar-divider"></div>
+          <div class="toolbar-group">
+            <!-- FIX #1: Color pickers properly wrapped -->
+            <div class="color-wrap" title="Text Color">
+              <span class="color-label">A</span>
+              <input type="color" value="#000000" onchange="execFormat('foreColor',this.value)" />
+            </div>
+            <div class="color-wrap" title="Highlight">
+              <span class="color-label" style="font-size:1rem;">▌</span>
+              <input type="color" value="#ffff00" onchange="execFormat('hiliteColor',this.value)" />
+            </div>
+          </div>
+          <div class="toolbar-divider"></div>
+          <div class="toolbar-group">
+            <button class="tool-btn" title="Undo" onclick="execFormat('undo')">↩</button>
+            <button class="tool-btn" title="Redo" onclick="execFormat('redo')">↪</button>
+            <button class="tool-btn" title="Clear Format" onclick="execFormat('removeFormat')">✗</button>
+          </div>
         </div>
 
-        <!-- RIGHT PANEL: Editor -->
-        <div class="panel panel-right" id="panelRight">
-          <div class="panel-header">
-            <div class="editor-tabs" id="editorTabs">
-              <button class="tab-btn active" data-tab="welcome" onclick="switchTab('welcome')">Welcome</button>
-            </div>
-            <div class="panel-actions">
-              <button class="icon-btn" title="Word Count" onclick="showWordCount()">🔢</button>
-              <button class="icon-btn" title="Preview" onclick="togglePreview()">👁️</button>
-              <button class="icon-btn" title="Full Screen" onclick="toggleFullscreen()">⛶</button>
-            </div>
-          </div>
-
-          <!-- Editor Toolbar -->
-          <div class="editor-toolbar" id="editorToolbar">
-            <div class="toolbar-group">
-              <select class="toolbar-select" title="Heading" onchange="execFormat('formatBlock', this.value); this.value=''">
-                <option value="">Style</option>
-                <option value="h1">Heading 1</option>
-                <option value="h2">Heading 2</option>
-                <option value="h3">Heading 3</option>
-                <option value="h4">Heading 4</option>
-                <option value="p">Paragraph</option>
-                <option value="blockquote">Blockquote</option>
-                <option value="pre">Code Block</option>
-              </select>
-              <select class="toolbar-select" title="Font Family" onchange="execFormat('fontName', this.value); this.value=''">
-                <option value="">Font</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Arial">Arial</option>
-                <option value="Verdana">Verdana</option>
-                <option value="Courier New">Courier New</option>
-              </select>
-              <select class="toolbar-select w50" title="Font Size" onchange="execFormat('fontSize', this.value); this.value=''">
-                <option value="">Size</option>
-                <option value="1">8pt</option>
-                <option value="2">10pt</option>
-                <option value="3">12pt</option>
-                <option value="4">14pt</option>
-                <option value="5">18pt</option>
-                <option value="6">24pt</option>
-                <option value="7">36pt</option>
-              </select>
-            </div>
-            <div class="toolbar-divider"></div>
-            <div class="toolbar-group">
-              <button class="tool-btn" title="Bold" onclick="execFormat('bold')"><b>B</b></button>
-              <button class="tool-btn" title="Italic" onclick="execFormat('italic')"><i>I</i></button>
-              <button class="tool-btn" title="Underline" onclick="execFormat('underline')"><u>U</u></button>
-              <button class="tool-btn" title="Strikethrough" onclick="execFormat('strikeThrough')"><s>S</s></button>
-              <button class="tool-btn" title="Superscript" onclick="execFormat('superscript')">x²</button>
-              <button class="tool-btn" title="Subscript" onclick="execFormat('subscript')">x₂</button>
-            </div>
-            <div class="toolbar-divider"></div>
-            <div class="toolbar-group">
-              <button class="tool-btn" title="Align Left" onclick="execFormat('justifyLeft')">⬛◻◻</button>
-              <button class="tool-btn" title="Align Center" onclick="execFormat('justifyCenter')">◻⬛◻</button>
-              <button class="tool-btn" title="Align Right" onclick="execFormat('justifyRight')">◻◻⬛</button>
-              <button class="tool-btn" title="Justify" onclick="execFormat('justifyFull')">▬▬▬</button>
-            </div>
-            <div class="toolbar-divider"></div>
-            <div class="toolbar-group">
-              <button class="tool-btn" title="Ordered List" onclick="execFormat('insertOrderedList')">1.</button>
-              <button class="tool-btn" title="Bullet List" onclick="execFormat('insertUnorderedList')">•</button>
-              <button class="tool-btn" title="Indent" onclick="execFormat('indent')">→</button>
-              <button class="tool-btn" title="Outdent" onclick="execFormat('outdent')">←</button>
-            </div>
-            <div class="toolbar-divider"></div>
-            <div class="toolbar-group">
-              <button class="tool-btn" title="Insert Link" onclick="insertLink()">🔗</button>
-              <button class="tool-btn" title="Insert Image" onclick="insertImage()">🖼️</button>
-              <button class="tool-btn" title="Insert Table" onclick="insertTable()">⊞</button>
-              <button class="tool-btn" title="Insert Horizontal Rule" onclick="execFormat('insertHorizontalRule')">—</button>
-              <button class="tool-btn" title="Insert Page Break" onclick="insertPageBreak()">⏎</button>
-            </div>
-            <div class="toolbar-divider"></div>
-            <div class="toolbar-group">
-              <input type="color" class="color-picker" title="Text Color" onchange="execFormat('foreColor', this.value)" value="#000000" />
-              <input type="color" class="color-picker" title="Highlight Color" onchange="execFormat('hiliteColor', this.value)" value="#ffff00" />
-            </div>
-            <div class="toolbar-divider"></div>
-            <div class="toolbar-group">
-              <button class="tool-btn" title="Undo" onclick="execFormat('undo')">↩</button>
-              <button class="tool-btn" title="Redo" onclick="execFormat('redo')">↪</button>
-              <button class="tool-btn" title="Remove Formatting" onclick="execFormat('removeFormat')">✗</button>
-            </div>
-          </div>
-
-          <!-- Editor Content Area -->
-          <div class="editor-content" id="editorContent">
-            <!-- Welcome Tab -->
-            <div class="tab-content active" id="tab-welcome">
-              <div class="welcome-editor">
-                <div class="welcome-inner">
-                  <div class="welcome-logo">✦ AuthorPro</div>
-                  <h2>Welcome, Author!</h2>
-                  <p>Your manuscript formatter is ready. Here's how to get started:</p>
-                  <div class="steps-guide">
-                    <div class="step">
-                      <span class="step-num">1</span>
-                      <div>
-                        <strong>Fill Book Details</strong>
-                        <p>Enter your book title, author name, and other metadata on the left panel.</p>
-                      </div>
-                    </div>
-                    <div class="step">
-                      <span class="step-num">2</span>
-                      <div>
-                        <strong>Choose Sections</strong>
-                        <p>Toggle on the sections you need — title page, preface, acknowledgements, etc.</p>
-                      </div>
-                    </div>
-                    <div class="step">
-                      <span class="step-num">3</span>
-                      <div>
-                        <strong>Add Chapters</strong>
-                        <p>Add units (optional) and chapters. Click a chapter to start writing or paste your content.</p>
-                      </div>
-                    </div>
-                    <div class="step">
-                      <span class="step-num">4</span>
-                      <div>
-                        <strong>Export</strong>
-                        <p>Choose PDF or EPUB and click Generate. Your formatted book downloads instantly.</p>
-                      </div>
-                    </div>
-                  </div>
-                  <button class="btn-primary" onclick="addChapter(null); switchTab('ch_0')">Start Your First Chapter →</button>
+        <!-- EDITOR CONTENT -->
+        <div class="editor-content" id="editorContent">
+          <div class="tab-content active" id="tab-welcome">
+            <div class="welcome-editor">
+              <div class="welcome-inner">
+                <div class="welcome-logo">✦ AuthorPro</div>
+                <h2>Welcome, Author!</h2>
+                <p>Your manuscript formatter is ready. Here's how to get started:</p>
+                <div class="steps-guide">
+                  <div class="step"><span class="step-num">1</span><div><strong>Fill Book Details</strong><p>Enter your book title and author name (required) on the left panel.</p></div></div>
+                  <div class="step"><span class="step-num">2</span><div><strong>Choose Sections</strong><p>Toggle sections you need — title page, preface, acknowledgements, etc. Write content directly in the inline editors.</p></div></div>
+                  <div class="step"><span class="step-num">3</span><div><strong>Add Chapters</strong><p>Add units (optional) and chapters. Click a chapter tab to start writing or paste your content.</p></div></div>
+                  <div class="step"><span class="step-num">4</span><div><strong>Export</strong><p>Choose PDF or EPUB and click Generate. Your formatted book downloads instantly.</p></div></div>
                 </div>
+                <button class="btn-primary" onclick="addChapter(null);switchTab('ch_0')">Start Your First Chapter →</button>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Word Count Bar -->
-          <div class="editor-statusbar">
-            <span id="wordCountDisplay">Words: 0</span>
-            <span id="charCountDisplay">Characters: 0</span>
-            <span id="autoSaveIndicator" class="autosave-indicator">✓ Auto-saved</span>
+        <div class="editor-statusbar">
+          <span id="wordCountDisplay">Words: 0</span>
+          <span id="charCountDisplay">Characters: 0</span>
+          <span style="color:#a8a0b8;font-size:0.68rem;">✓ Hindi/Unicode</span>
+          <span id="autoSaveIndicator" class="autosave-indicator">✓ Auto-saved</span>
+        </div>
+      </div><!-- end panel-right -->
+
+    </div><!-- end app-layout -->
+
+    <!-- Preview Modal -->
+    <div class="preview-modal" id="previewModal">
+      <div class="preview-modal-inner">
+        <div class="preview-modal-header">
+          <h3>📖 Book Preview</h3>
+          <div class="preview-actions">
+            <button class="btn-primary" onclick="exportBook()">Export Now</button>
+            <button class="icon-btn" onclick="togglePreview()">✕</button>
           </div>
         </div>
-
-      </div><!-- end app-layout -->
-
-      <!-- Preview Modal -->
-      <div class="preview-modal" id="previewModal">
-        <div class="preview-modal-inner">
-          <div class="preview-modal-header">
-            <h3>📖 Book Preview</h3>
-            <div class="preview-actions">
-              <button class="btn-primary" onclick="exportBook()">Export Now</button>
-              <button class="icon-btn close-btn" onclick="togglePreview()">✕</button>
-            </div>
-          </div>
-          <div class="preview-body" id="previewBody"></div>
-        </div>
-      </div>
-
-      <!-- Word Count Modal -->
-      <div class="modal-overlay" id="wordCountModal">
-        <div class="modal-box">
-          <h3>📊 Document Statistics</h3>
-          <div class="stats-grid" id="statsGrid"></div>
-          <button class="btn-primary" onclick="document.getElementById('wordCountModal').classList.remove('active')">Close</button>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- ===== FAQ ===== -->
-  <section class="faq-section" id="faq">
-    <div class="container">
-      <p class="section-eyebrow">Got Questions?</p>
-      <h2 class="section-title">Frequently Asked Questions</h2>
-      <div class="faq-list">
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Is AuthorPro completely free?
-            <span class="faq-arrow">▾</span>
-          </button>
-          <div class="faq-a">Yes! AuthorPro is 100% free. No sign-up, no subscription, no hidden charges. Just open and start formatting your manuscript.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Do I need to create an account?
-            <span class="faq-arrow">▾</span>
-          </button>
-          <div class="faq-a">No account needed. Your work is saved locally in your browser. Use the Save Progress button to save a JSON file, and Load Saved to restore it.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Can I paste my already-written manuscript?
-            <span class="faq-arrow">▾</span>
-          </button>
-          <div class="faq-a">Absolutely. Each chapter has a rich text editor where you can paste content from Word, Google Docs, Notepad, or any source. Formatting is preserved.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            What is a "Unit" in the formatter?
-            <span class="faq-arrow">▾</span>
-          </button>
-          <div class="faq-a">Units are large groupings (sometimes called "Parts" or "Sections") that contain multiple chapters. For example: Unit I – The Beginning, then Chapter 1, 2, 3 under it. Units are completely optional.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Will the PDF have running headers?
-            <span class="faq-arrow">▾</span>
-          </button>
-          <div class="faq-a">Yes! When "Running Headers" is enabled in Page Settings, the PDF will show your book title on the left side of the header and the current chapter title on the right — just like professionally published books.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            What EPUB features are supported?
-            <span class="faq-arrow">▾</span>
-          </button>
-          <div class="faq-a">EPUB export creates a standard EPUB 3 file with metadata (title, author, publisher), a table of contents, all chapters, and front/back matter — compatible with Kindle, Kobo, Apple Books, and more.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Can I use this on mobile?
-            <span class="faq-arrow">▾</span>
-          </button>
-          <div class="faq-a">Yes! AuthorPro is fully responsive and works on phones and tablets. The layout adapts to smaller screens automatically.</div>
-        </div>
+        <div class="preview-body" id="previewBody"></div>
       </div>
     </div>
-  </section>
 
-  <!-- ===== FOOTER ===== -->
-  <footer class="site-footer">
-    <div class="container">
-      <div class="footer-top">
-        <div class="footer-brand">
-          <div class="brand-logo">✦ AuthorPro</div>
-          <p>A free manuscript formatter for writers and authors. Format your book into professional PDF or EPUB — no signup needed.</p>
-        </div>
-        <div class="footer-links-col">
-          <h4>Quick Links</h4>
-          <ul>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#formatter">Formatter</a></li>
-            <li><a href="#faq">FAQ</a></li>
-          </ul>
-        </div>
-        <div class="footer-links-col">
-          <h4>Resources</h4>
-          <ul>
-            <li><a href="https://github.com/AvinashWalton/AuthorPro" target="_blank" rel="noopener">GitHub Repo</a></li>
-            <li><a href="https://github.com/AvinashWalton/AuthorPro/blob/main/README.md" target="_blank" rel="noopener">README</a></li>
-            <li><a href="https://github.com/AvinashWalton/AuthorPro/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Social Media -->
-      <div class="footer-social">
-        <h4>Connect with the Creator</h4>
-        <div class="social-badges">
-          <a href="https://youtube.com/@AvinashWalton" target="_blank" rel="noopener" class="social-badge youtube" aria-label="YouTube">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
-            YouTube
-          </a>
-          <a href="https://facebook.com/AvinashWalton" target="_blank" rel="noopener" class="social-badge facebook" aria-label="Facebook">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            Facebook
-          </a>
-          <a href="https://twitter.com/AvinashWalton" target="_blank" rel="noopener" class="social-badge twitter" aria-label="Twitter / X">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            Twitter / X
-          </a>
-          <a href="https://instagram.com/AvinashWalton" target="_blank" rel="noopener" class="social-badge instagram" aria-label="Instagram">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
-            Instagram
-          </a>
-          <a href="https://threads.net/@AvinashWalton" target="_blank" rel="noopener" class="social-badge threads" aria-label="Threads">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.586-1.308-.883-2.359-.89h-.029c-.844 0-1.992.232-2.721 1.32L7.734 7.847c.98-1.454 2.568-2.256 4.478-2.256h.044c3.194.02 5.097 1.975 5.287 5.388.108.046.216.094.321.142 1.49.7 2.58 1.761 3.154 3.07.797 1.82.871 4.79-1.548 7.158-1.86 1.82-4.12 2.67-7.283 2.651zm.18-8.704c-.704 0-1.338.118-1.846.342-.508.225-.798.565-.823 1.023-.049.908.875 1.502 2.135 1.433.913-.05 1.599-.38 2.042-.98.395-.538.595-1.305.6-2.3a11.714 11.714 0 0 0-2.108.482z"/></svg>
-            Threads
-          </a>
-          <a href="https://linkedin.com/in/SonuKumarSuman" target="_blank" rel="noopener" class="social-badge linkedin" aria-label="LinkedIn">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-            LinkedIn
-          </a>
-        </div>
-      </div>
-
-      <div class="footer-bottom">
-        <div class="footer-copy">
-          <span>Made with ❤️ in India by <a href="https://youtube.com/@AvinashWalton" target="_blank" rel="noopener">Avinash Walton</a></span>
-          <span class="sep">•</span>
-          <span>Open Source under <a href="https://github.com/AvinashWalton/AuthorPro/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></span>
-          <span class="sep">•</span>
-          <span>© <span id="currentYear"></span> AuthorPro</span>
-        </div>
+    <!-- Word Count Modal -->
+    <div class="modal-overlay" id="wordCountModal">
+      <div class="modal-box">
+        <h3>📊 Document Statistics</h3>
+        <div class="stats-grid" id="statsGrid"></div>
+        <button class="btn-primary" onclick="document.getElementById('wordCountModal').classList.remove('active')">Close</button>
       </div>
     </div>
-  </footer>
+  </div>
+</section>
 
-  <script src="script.js"></script>
+<!-- FAQ -->
+<section class="faq-section" id="faq">
+  <div class="container">
+    <p class="section-eyebrow">Got Questions?</p>
+    <h2 class="section-title">Frequently Asked Questions</h2>
+    <div class="faq-list">
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is AuthorPro completely free?<span class="faq-arrow">▾</span></button><div class="faq-a">Yes! AuthorPro is 100% free. No sign-up, no subscription, no hidden charges.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I write in Hindi or other Indian languages?<span class="faq-arrow">▾</span></button><div class="faq-a">Yes! The editor fully supports Hindi, Bengali, Tamil, Gujarati, and any Unicode language. Content is preserved correctly in both PDF and EPUB exports.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How does the cover image work?<span class="faq-arrow">▾</span></button><div class="faq-a">Upload a cover image in Book Details. It appears as a full-page first page in your PDF — no headers, no page numbers, just the cover. Professional publishing standard.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I paste my already-written manuscript?<span class="faq-arrow">▾</span></button><div class="faq-a">Absolutely. Each chapter has a rich text editor where you can paste content from Word, Google Docs, or any source. Formatting is preserved.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do Running Headers work?<span class="faq-arrow">▾</span></button><div class="faq-a">When enabled: even-numbered pages show your book title, odd-numbered pages show the current chapter title. Pages with Unit headings have no header at all.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">What is a "Unit" in the formatter?<span class="faq-arrow">▾</span></button><div class="faq-a">Units are large groupings (called "Parts") that contain multiple chapters. E.g. "Unit I – The Beginning" then Chapter 1, 2, 3. Completely optional.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I use this on mobile?<span class="faq-arrow">▾</span></button><div class="faq-a">Yes! AuthorPro is fully responsive and works on phones and tablets. The layout adapts to smaller screens automatically.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="brand-logo">✦ AuthorPro</div>
+        <p>A free manuscript formatter for writers and authors. Format your book into professional PDF or EPUB — no signup needed.</p>
+      </div>
+      <div class="footer-links-col">
+        <h4>Quick Links</h4>
+        <ul><li><a href="#features">Features</a></li><li><a href="#formatter">Formatter</a></li><li><a href="#faq">FAQ</a></li></ul>
+      </div>
+      <div class="footer-links-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="https://github.com/AvinashWalton/AuthorPro" target="_blank" rel="noopener">GitHub Repo</a></li>
+          <li><a href="https://github.com/AvinashWalton/AuthorPro/blob/main/README.md" target="_blank" rel="noopener">README</a></li>
+          <li><a href="https://github.com/AvinashWalton/AuthorPro/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-social">
+      <h4>Connect with the Creator</h4>
+      <div class="social-badges">
+        <a href="https://youtube.com/@AvinashWalton" target="_blank" rel="noopener" class="social-badge youtube" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>YouTube</a>
+        <a href="https://facebook.com/AvinashWalton" target="_blank" rel="noopener" class="social-badge facebook" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>Facebook</a>
+        <a href="https://twitter.com/AvinashWalton" target="_blank" rel="noopener" class="social-badge twitter" aria-label="Twitter / X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Twitter / X</a>
+        <a href="https://instagram.com/AvinashWalton" target="_blank" rel="noopener" class="social-badge instagram" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>Instagram</a>
+        <a href="https://threads.net/@AvinashWalton" target="_blank" rel="noopener" class="social-badge threads" aria-label="Threads"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.586-1.308-.883-2.359-.89h-.029c-.844 0-1.992.232-2.721 1.32L7.734 7.847c.98-1.454 2.568-2.256 4.478-2.256h.044c3.194.02 5.097 1.975 5.287 5.388.108.046.216.094.321.142 1.49.7 2.58 1.761 3.154 3.07.797 1.82.871 4.79-1.548 7.158-1.86 1.82-4.12 2.67-7.283 2.651zm.18-8.704c-.704 0-1.338.118-1.846.342-.508.225-.798.565-.823 1.023-.049.908.875 1.502 2.135 1.433.913-.05 1.599-.38 2.042-.98.395-.538.595-1.305.6-2.3a11.714 11.714 0 0 0-2.108.482z"/></svg>Threads</a>
+        <a href="https://linkedin.com/in/SonuKumarSuman" target="_blank" rel="noopener" class="social-badge linkedin" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">
+        <span>Made with ❤️ in India by <a href="https://youtube.com/@AvinashWalton" target="_blank" rel="noopener">Avinash Walton</a></span>
+        <span class="sep">•</span>
+        <span>Open Source under <a href="https://github.com/AvinashWalton/AuthorPro/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></span>
+        <span class="sep">•</span>
+        <span>© <span id="currentYear"></span> AuthorPro</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
 </body>
 </html>
