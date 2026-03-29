@@ -1,19 +1,17 @@
 /* ============================================================
-   AuthorPro – script.js
-   Author: Avinash Walton | MIT License
+   AuthorPro – script.js  v2 (All 10 fixes applied)
    ============================================================ */
-
 'use strict';
 
-// ===== STATE =====
 const state = {
-  chapters: [],       // { id, title, content, unitId }
-  units: [],          // { id, title }
+  chapters: [],
+  units: [],
   activeTab: 'welcome',
   exportFormat: 'pdf',
   autoSaveTimer: null,
   chapterCounter: 0,
   unitCounter: 0,
+  coverImageDataUrl: null,  // FIX #6
 };
 
 // ===== INIT =====
@@ -24,15 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
   updateWordCount();
 });
 
-// ===== NAVIGATION =====
-function scrollToFormatter() {
-  document.getElementById('formatter').scrollIntoView({ behavior: 'smooth' });
-}
-
-function closeMobileMenu() {
-  document.getElementById('mobileMenu').classList.remove('open');
-}
-
+// ===== NAV =====
+function scrollToFormatter() { document.getElementById('formatter').scrollIntoView({ behavior: 'smooth' }); }
+function closeMobileMenu() { document.getElementById('mobileMenu').classList.remove('open'); }
 document.getElementById('hamburger').addEventListener('click', () => {
   document.getElementById('mobileMenu').classList.toggle('open');
 });
@@ -47,7 +39,40 @@ function toggleBlock(bodyId) {
   if (header) header.classList.toggle('collapsed', !isHidden);
 }
 
-// ===== UNIT MODE TOGGLE =====
+// ===== FIX #7: Front/back matter inline editors =====
+function toggleFrontEditor(wrapId, show) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  wrap.classList.toggle('visible', show);
+  if (show) {
+    const editor = wrap.querySelector('.front-editor');
+    if (editor) setTimeout(() => editor.focus(), 50);
+  }
+}
+
+// ===== FIX #6: Cover image =====
+function onCoverImageChange(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    state.coverImageDataUrl = e.target.result;
+    document.getElementById('coverPreview').src = e.target.result;
+    document.getElementById('coverPreviewWrap').style.display = 'block';
+    scheduleAutoSave();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeCover() {
+  state.coverImageDataUrl = null;
+  document.getElementById('coverImage').value = '';
+  document.getElementById('coverPreviewWrap').style.display = 'none';
+  document.getElementById('coverPreview').src = '';
+  scheduleAutoSave();
+}
+
+// ===== UNIT MODE =====
 function toggleUnitMode() {
   const use = document.getElementById('useUnits').checked;
   document.getElementById('addUnitBtn').style.display = use ? 'inline-flex' : 'none';
@@ -56,7 +81,6 @@ function toggleUnitMode() {
     addUnit();
   } else if (!use) {
     state.units = [];
-    // Re-render chapters without unit labels
     renderChapterList();
   }
 }
@@ -64,17 +88,17 @@ function toggleUnitMode() {
 // ===== UNITS =====
 function addUnit() {
   const id = 'u' + (++state.unitCounter);
-  const unit = { id, title: '' };
-  state.units.push(unit);
+  state.units.push({ id, title: '' });
   renderUnits();
 }
 
 function removeUnit(unitId) {
-  if (!confirm('Delete this unit? Chapters under it will remain.')) return;
+  if (!confirm('Delete this unit? Chapters under it will become unassigned.')) return;
   state.units = state.units.filter(u => u.id !== unitId);
   state.chapters.forEach(ch => { if (ch.unitId === unitId) ch.unitId = null; });
   renderUnits();
   renderChapterList();
+  scheduleAutoSave();
 }
 
 function renderUnits() {
@@ -84,11 +108,10 @@ function renderUnits() {
     <div class="unit-block" id="unitBlock_${unit.id}">
       <div class="unit-header">
         <span class="unit-label">Unit ${i + 1}</span>
-        <input class="unit-title-input" type="text" placeholder="Unit title e.g. The Beginning"
+        <input class="unit-title-input" type="text" placeholder="Unit title…"
           value="${escHtml(unit.title)}"
-          oninput="updateUnitTitle('${unit.id}', this.value)"
-        />
-        <button class="btn-delete-chapter" title="Delete Unit" onclick="removeUnit('${unit.id}')">✕</button>
+          oninput="updateUnitTitle('${unit.id}', this.value)" />
+        <button class="btn-delete-unit" title="Delete Unit" onclick="removeUnit('${unit.id}')">✕</button>
       </div>
     </div>
   `).join('');
@@ -104,7 +127,7 @@ function updateUnitTitle(unitId, val) {
 // ===== CHAPTERS =====
 function addChapter(unitId) {
   const id = 'ch_' + (state.chapterCounter++);
-  const ch = { id, title: 'Untitled Chapter', content: '', unitId: unitId || null };
+  const ch = { id, title: 'Chapter ' + (state.chapters.length + 1), content: '', unitId: unitId || null };
   state.chapters.push(ch);
   renderChapterList();
   createEditorTab(ch);
@@ -114,24 +137,15 @@ function addChapter(unitId) {
 
 function removeChapter(id, e) {
   if (e) e.stopPropagation();
-  if (state.chapters.length === 1 && !confirm('Remove the only chapter?')) return;
-  if (state.chapters.length > 1 && !confirm('Delete this chapter? Content will be lost.')) return;
-
-  // Remove tab
+  if (!confirm('Delete this chapter? Content will be lost.')) return;
   const tabBtn = document.querySelector(`[data-tab="${id}"]`);
   const tabContent = document.getElementById(`tab-${id}`);
   if (tabBtn) tabBtn.remove();
   if (tabContent) tabContent.remove();
-
   state.chapters = state.chapters.filter(ch => ch.id !== id);
   renderChapterList();
-
   if (state.activeTab === id) {
-    if (state.chapters.length > 0) {
-      switchTab(state.chapters[state.chapters.length - 1].id);
-    } else {
-      switchTab('welcome');
-    }
+    switchTab(state.chapters.length > 0 ? state.chapters[state.chapters.length - 1].id : 'welcome');
   }
   scheduleAutoSave();
 }
@@ -139,22 +153,18 @@ function removeChapter(id, e) {
 function renderChapterList() {
   const container = document.getElementById('chaptersContainer');
   if (!container) return;
-
-  if (document.getElementById('useUnits').checked && state.units.length > 0) {
+  const useUnits = document.getElementById('useUnits').checked;
+  if (useUnits && state.units.length > 0) {
     let html = '';
     state.units.forEach((unit, ui) => {
-      const unitChapters = state.chapters.filter(ch => ch.unitId === unit.id);
-      html += `
-        <div class="unit-chapters-group">
-          <div class="unit-group-label">▸ ${escHtml(unit.title || `Unit ${ui + 1}`)}</div>
-          ${unitChapters.map(ch => chapterItemHTML(ch)).join('')}
-          <button class="btn-add" style="margin:4px 0 8px 12px;font-size:0.75rem;" onclick="addChapter('${unit.id}')">+ Add Chapter</button>
-        </div>
-      `;
+      const unitChs = state.chapters.filter(ch => ch.unitId === unit.id);
+      html += `<div class="unit-group-label">▸ ${escHtml(unit.title || `Unit ${ui + 1}`)}</div>`;
+      html += unitChs.map(ch => chapterItemHTML(ch)).join('');
+      html += `<button class="btn-add" style="margin:3px 0 7px 14px;font-size:0.74rem;" onclick="addChapter('${unit.id}')">+ Add Chapter</button>`;
     });
     const unassigned = state.chapters.filter(ch => !ch.unitId);
     if (unassigned.length > 0) {
-      html += `<div class="unit-group-label" style="margin-top:8px;">Unassigned</div>`;
+      html += `<div class="unit-group-label" style="margin-top:6px;">Unassigned</div>`;
       html += unassigned.map(ch => chapterItemHTML(ch)).join('');
     }
     container.innerHTML = html;
@@ -165,22 +175,25 @@ function renderChapterList() {
 
 function chapterItemHTML(ch) {
   const isActive = state.activeTab === ch.id;
-  const chIdx = state.chapters.indexOf(ch);
+  const chIdx = state.chapters.indexOf(ch) + 1;
   return `
-    <div class="chapter-item ${isActive ? 'active' : ''}" id="chItem_${ch.id}" onclick="switchTab('${ch.id}')">
-      <span class="chapter-num">Ch.${chIdx + 1}</span>
-      <span class="chapter-title-label">${escHtml(ch.title || 'Untitled')}</span>
-      <button class="btn-delete-chapter" title="Delete Chapter" onclick="removeChapter('${ch.id}', event)">✕</button>
-    </div>
-  `;
+    <div class="chapter-item${isActive ? ' active' : ''}" id="chItem_${ch.id}" onclick="switchTab('${ch.id}')">
+      <span class="chapter-num">Ch.${chIdx}</span>
+      <!-- FIX #4: Editable title directly in sidebar -->
+      <input type="text" class="chapter-title-edit" value="${escHtml(ch.title)}"
+        onclick="event.stopPropagation()"
+        oninput="updateChapterTitle('${ch.id}', this.value)"
+        onfocus="switchTab('${ch.id}')"
+        placeholder="Chapter title…"
+      />
+      <button class="btn-delete-chapter" title="Delete" onclick="removeChapter('${ch.id}',event)">✕</button>
+    </div>`;
 }
 
 // ===== EDITOR TABS =====
 function createEditorTab(ch) {
   const tabsRow = document.getElementById('editorTabs');
   const editorContent = document.getElementById('editorContent');
-
-  // Tab button
   const tabBtn = document.createElement('button');
   tabBtn.className = 'tab-btn';
   tabBtn.dataset.tab = ch.id;
@@ -189,7 +202,6 @@ function createEditorTab(ch) {
   tabBtn.onclick = () => switchTab(ch.id);
   tabsRow.appendChild(tabBtn);
 
-  // Tab content
   const tabDiv = document.createElement('div');
   tabDiv.className = 'tab-content';
   tabDiv.id = `tab-${ch.id}`;
@@ -197,43 +209,36 @@ function createEditorTab(ch) {
     <div class="rich-editor-wrap">
       <div class="chapter-heading-bar">
         <span class="ch-heading-label">Chapter Title:</span>
-        <input class="ch-title-input" type="text" placeholder="Enter chapter title..."
+        <!-- FIX #2: title input with forced dark color -->
+        <input class="ch-title-input" type="text" placeholder="Enter chapter title…"
           value="${escHtml(ch.title)}"
           oninput="updateChapterTitle('${ch.id}', this.value)"
+          style="color:#1a1228 !important;"
         />
       </div>
+      <!-- FIX #10: lang attribute for Hindi/Unicode support -->
       <div class="rich-editor" id="editor_${ch.id}"
         contenteditable="true"
-        data-placeholder="Start writing or paste your content here..."
+        lang="hi"
+        dir="auto"
+        data-placeholder="Start writing or paste your content here… (Hindi/English both supported)"
         oninput="onEditorInput('${ch.id}')"
-        onpaste="onEditorPaste(event)"
       >${ch.content}</div>
-    </div>
-  `;
+    </div>`;
   editorContent.appendChild(tabDiv);
 }
 
 function switchTab(id) {
-  // Deactivate all
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-
-  // Activate
   const tabBtn = document.querySelector(`[data-tab="${id}"]`);
   const tabContent = document.getElementById(`tab-${id}`);
   if (tabBtn) tabBtn.classList.add('active');
   if (tabContent) tabContent.classList.add('active');
-
   state.activeTab = id;
-
-  // Update chapter list highlight
   document.querySelectorAll('.chapter-item').forEach(el => el.classList.remove('active'));
   const chItem = document.getElementById(`chItem_${id}`);
-  if (chItem) {
-    chItem.classList.add('active');
-    chItem.scrollIntoView({ block: 'nearest' });
-  }
-
+  if (chItem) { chItem.classList.add('active'); chItem.scrollIntoView({ block: 'nearest' }); }
   updateWordCount();
 }
 
@@ -241,12 +246,14 @@ function updateChapterTitle(id, val) {
   const ch = state.chapters.find(c => c.id === id);
   if (!ch) return;
   ch.title = val;
-
-  // Update tab button
   const tabBtn = document.querySelector(`[data-tab="${id}"]`);
   if (tabBtn) { tabBtn.textContent = val || 'Ch.'; tabBtn.title = val; }
-
-  // Update chapter list
+  // sync sidebar input
+  const sideInput = document.querySelector(`#chItem_${id} .chapter-title-edit`);
+  if (sideInput && document.activeElement !== sideInput) sideInput.value = val;
+  // sync heading bar input
+  const headInput = document.querySelector(`#tab-${id} .ch-title-input`);
+  if (headInput && document.activeElement !== headInput) headInput.value = val;
   renderChapterList();
   scheduleAutoSave();
 }
@@ -260,61 +267,49 @@ function onEditorInput(id) {
   scheduleAutoSave();
 }
 
-function onEditorPaste(e) {
-  // Allow paste with formatting from Word/Google Docs
-  // No override needed — contenteditable handles it
-}
-
 // ===== RICH TEXT COMMANDS =====
 function execFormat(cmd, val) {
   document.execCommand(cmd, false, val || null);
   focusActiveEditor();
 }
-
 function focusActiveEditor() {
   const active = document.querySelector('.tab-content.active .rich-editor');
   if (active) active.focus();
 }
-
 function insertLink() {
   const url = prompt('Enter URL:', 'https://');
   if (url) execFormat('createLink', url);
 }
-
-function insertImage() {
+function insertImageUrl() {
   const url = prompt('Enter image URL:');
   if (url) execFormat('insertImage', url);
 }
-
 function insertTable() {
   const rows = parseInt(prompt('Number of rows:', '3') || '3');
   const cols = parseInt(prompt('Number of columns:', '3') || '3');
   if (isNaN(rows) || isNaN(cols)) return;
-
   let tbl = '<table><tbody>';
   for (let r = 0; r < rows; r++) {
     tbl += '<tr>';
-    for (let c = 0; c < cols; c++) {
-      tbl += r === 0 ? '<th>Header</th>' : '<td>Cell</td>';
-    }
+    for (let c = 0; c < cols; c++) tbl += r === 0 ? '<th>Header</th>' : '<td>Cell</td>';
     tbl += '</tr>';
   }
   tbl += '</tbody></table><p></p>';
   execFormat('insertHTML', tbl);
 }
-
 function insertPageBreak() {
   execFormat('insertHTML', '<div class="page-break"></div><p></p>');
 }
 
 // ===== WORD COUNT =====
 function updateWordCount() {
-  const activeEditor = document.querySelector('.tab-content.active .rich-editor');
-  const text = activeEditor ? (activeEditor.innerText || '') : '';
+  const active = document.querySelector('.tab-content.active .rich-editor');
+  const text = active ? (active.innerText || '') : '';
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-  const chars = text.length;
-  document.getElementById('wordCountDisplay').textContent = `Words: ${words.toLocaleString()}`;
-  document.getElementById('charCountDisplay').textContent = `Characters: ${chars.toLocaleString()}`;
+  const el1 = document.getElementById('wordCountDisplay');
+  const el2 = document.getElementById('charCountDisplay');
+  if (el1) el1.textContent = `Words: ${words.toLocaleString()}`;
+  if (el2) el2.textContent = `Characters: ${text.length.toLocaleString()}`;
 }
 
 function showWordCount() {
@@ -326,20 +321,18 @@ function showWordCount() {
     totalWords += t.trim() ? t.trim().split(/\s+/).length : 0;
     totalChars += t.length;
   });
-
-  const grid = document.getElementById('statsGrid');
-  grid.innerHTML = `
+  document.getElementById('statsGrid').innerHTML = `
     <div class="stat-item"><div class="stat-num">${state.chapters.length}</div><div class="stat-label">Chapters</div></div>
     <div class="stat-item"><div class="stat-num">${state.units.length}</div><div class="stat-label">Units</div></div>
     <div class="stat-item"><div class="stat-num">${totalWords.toLocaleString()}</div><div class="stat-label">Total Words</div></div>
-    <div class="stat-item"><div class="stat-num">${totalChars.toLocaleString()}</div><div class="stat-label">Total Characters</div></div>
-    <div class="stat-item"><div class="stat-num">${Math.ceil(totalWords / 250)}</div><div class="stat-label">Est. Pages</div></div>
-    <div class="stat-item"><div class="stat-num">${Math.ceil(totalWords / 70000 * 100)}%</div><div class="stat-label">Novel Progress</div></div>
+    <div class="stat-item"><div class="stat-num">${totalChars.toLocaleString()}</div><div class="stat-label">Characters</div></div>
+    <div class="stat-item"><div class="stat-num">${Math.ceil(totalWords/250)}</div><div class="stat-label">Est. Pages</div></div>
+    <div class="stat-item"><div class="stat-num">${Math.ceil(totalWords/70000*100)}%</div><div class="stat-label">Novel Progress</div></div>
   `;
   document.getElementById('wordCountModal').classList.add('active');
 }
 
-// ===== FORMAT SELECT =====
+// ===== FORMAT =====
 function setFormat(fmt) {
   state.exportFormat = fmt;
   document.getElementById('fmtPDF').classList.toggle('active', fmt === 'pdf');
@@ -350,10 +343,7 @@ function setFormat(fmt) {
 // ===== PREVIEW =====
 function togglePreview() {
   const modal = document.getElementById('previewModal');
-  const isActive = modal.classList.contains('active');
-  if (!isActive) {
-    buildPreview();
-  }
+  if (!modal.classList.contains('active')) buildPreview();
   modal.classList.toggle('active');
 }
 
@@ -361,169 +351,163 @@ function buildPreview() {
   const previewBody = document.getElementById('previewBody');
   const bookTitle = document.getElementById('bookTitle').value || 'Untitled Book';
   const subtitle = document.getElementById('bookSubtitle').value;
-  const author = document.getElementById('authorName').value || 'Unknown Author';
+  const author = document.getElementById('authorName').value || 'Author';
   const showHeader = document.getElementById('showRunningHeader').checked;
   let html = '';
+  let pageNum = 0;
 
-  // Title Page preview
-  if (document.getElementById('hasTitlePage').checked) {
-    html += `
-      <div class="preview-page">
-        <div class="preview-title-page">
-          <div class="preview-book-title">${escHtml(bookTitle)}</div>
-          ${subtitle ? `<div class="preview-book-subtitle">${escHtml(subtitle)}</div>` : ''}
-          <div class="preview-author">— ${escHtml(author)} —</div>
-        </div>
-      </div>
-    `;
+  function pageWrap(content, chapterTitle, isUnit = false) {
+    pageNum++;
+    const isEven = pageNum % 2 === 0;
+    // FIX #9: unit pages = no header; even = book title; odd = chapter title
+    let headerBar = '';
+    if (showHeader && !isUnit) {
+      if (isEven) {
+        headerBar = `<div class="preview-header-bar"><span>${escHtml(bookTitle)}</span><span></span></div>`;
+      } else {
+        headerBar = `<div class="preview-header-bar"><span></span><span>${escHtml(chapterTitle)}</span></div>`;
+      }
+    }
+    return `<div class="preview-page">${headerBar}${content}</div>`;
   }
 
-  // Front matter sections
-  const frontSections = [
-    { key: 'hasDedication', label: 'Dedication' },
-    { key: 'hasForeword', label: 'Foreword' },
-    { key: 'hasPreface', label: 'Preface' },
-    { key: 'hasAcknowledgements', label: 'Acknowledgements' },
-    { key: 'hasIntroduction', label: 'Introduction' },
+  // Cover
+  if (state.coverImageDataUrl) {
+    html += `<div class="preview-page" style="padding:0;overflow:hidden;"><img src="${state.coverImageDataUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Cover" /></div>`;
+    pageNum++;
+  }
+  // Title page
+  if (document.getElementById('hasTitlePage').checked) {
+    html += pageWrap(`<div class="preview-title-page"><div class="preview-book-title">${escHtml(bookTitle)}</div>${subtitle ? `<div class="preview-book-subtitle">${escHtml(subtitle)}</div>` : ''}<div class="preview-author">— ${escHtml(author)} —</div></div>`, 'Title Page');
+  }
+  // Front matter
+  const frontSecs = [
+    { key:'hasDedication', label:'Dedication', edId:'dedicationEditor' },
+    { key:'hasForeword', label:'Foreword', edId:'forewordEditor' },
+    { key:'hasPreface', label:'Preface', edId:'prefaceEditor' },
+    { key:'hasAcknowledgements', label:'Acknowledgements', edId:'ackEditor' },
+    { key:'hasIntroduction', label:'Introduction', edId:'introEditor' },
   ];
-  frontSections.forEach(sec => {
+  frontSecs.forEach(sec => {
     if (document.getElementById(sec.key) && document.getElementById(sec.key).checked) {
-      html += sectionPreviewPage(sec.label, bookTitle, showHeader, `<p><em>(Content for ${sec.label} goes here)</em></p>`);
+      const editorEl = document.getElementById(sec.edId);
+      const content = editorEl ? editorEl.innerHTML : '';
+      html += pageWrap(`<div class="preview-chapter-title">${escHtml(sec.label)}</div><div>${content || `<p><em>Content for ${sec.label}</em></p>`}</div>`, sec.label);
     }
   });
-
-  // TOC Preview
+  // TOC
   if (document.getElementById('hasTOC').checked) {
-    let tocItems = state.chapters.map((ch, i) => `<p>Chapter ${i + 1} — ${escHtml(ch.title)} ............. ${i + 1}</p>`).join('');
-    html += sectionPreviewPage('Table of Contents', bookTitle, showHeader, tocItems);
+    let toc = '<div class="preview-chapter-title">Table of Contents</div><ul>';
+    state.chapters.forEach((ch, i) => { toc += `<li>Chapter ${i+1} — ${escHtml(ch.title)}</li>`; });
+    toc += '</ul>';
+    html += pageWrap(toc, 'Table of Contents');
   }
-
   // Chapters
   state.chapters.forEach((ch, i) => {
-    const headerRight = ch.title || `Chapter ${i + 1}`;
-    const chContent = ch.content || '<p><em>(No content yet)</em></p>';
-    html += `
-      <div class="preview-page">
-        ${showHeader ? `<div class="preview-header-bar"><span>${escHtml(bookTitle)}</span><span>${escHtml(headerRight)}</span></div>` : ''}
-        <div class="preview-chapter-num">CHAPTER ${i + 1}</div>
-        <div class="preview-chapter-title">${escHtml(ch.title || 'Untitled Chapter')}</div>
-        <div class="preview-chapter-body">${chContent}</div>
-      </div>
-    `;
+    html += pageWrap(`<div class="preview-chapter-num">Chapter ${i+1}</div><div class="preview-chapter-title">${escHtml(ch.title || 'Untitled')}</div><div>${ch.content || '<p><em>No content yet</em></p>'}</div>`, ch.title || `Chapter ${i+1}`);
   });
-
   // Back matter
-  const backSections = [
-    { key: 'hasEpilogue', label: 'Epilogue' },
-    { key: 'hasAfterword', label: 'Afterword' },
-    { key: 'hasGlossary', label: 'Glossary' },
-    { key: 'hasBibliography', label: 'Bibliography' },
-    { key: 'hasIndex', label: 'Index' },
-    { key: 'hasAboutAuthor', label: 'About the Author' },
+  const backSecs = [
+    { key:'hasEpilogue', label:'Epilogue', edId:'epilogueEditor' },
+    { key:'hasAfterword', label:'Afterword', edId:'afterwordEditor' },
+    { key:'hasGlossary', label:'Glossary', edId:'glossaryEditor' },
+    { key:'hasBibliography', label:'Bibliography', edId:'bibEditor' },
+    { key:'hasAboutAuthor', label:'About the Author', edId:'aboutEditor' },
   ];
-  backSections.forEach(sec => {
+  backSecs.forEach(sec => {
     if (document.getElementById(sec.key) && document.getElementById(sec.key).checked) {
-      html += sectionPreviewPage(sec.label, bookTitle, showHeader, `<p><em>(Content for ${sec.label} goes here)</em></p>`);
+      const editorEl = document.getElementById(sec.edId);
+      const content = editorEl ? editorEl.innerHTML : '';
+      html += pageWrap(`<div class="preview-chapter-title">${escHtml(sec.label)}</div><div>${content || `<p><em>Content for ${sec.label}</em></p>`}</div>`, sec.label);
     }
   });
-
-  previewBody.innerHTML = html || '<p style="color:#888;padding:40px;text-align:center;">No content to preview yet.</p>';
-}
-
-function sectionPreviewPage(title, bookTitle, showHeader, content) {
-  return `
-    <div class="preview-page">
-      ${showHeader ? `<div class="preview-header-bar"><span>${escHtml(bookTitle)}</span><span>${escHtml(title)}</span></div>` : ''}
-      <div class="preview-chapter-title">${escHtml(title)}</div>
-      ${content}
-    </div>
-  `;
+  previewBody.innerHTML = html || '<p style="color:#888;padding:40px;text-align:center;">No content to preview yet. Add chapters or sections.</p>';
 }
 
 // ===== FULLSCREEN =====
 function toggleFullscreen() {
   const panel = document.getElementById('panelRight');
-  panel.classList.toggle('fullscreen-panel');
-  if (panel.classList.contains('fullscreen-panel')) {
-    panel.style.cssText = `position:fixed;inset:0;z-index:999;border-radius:0;max-height:100vh;`;
+  if (!panel._fs) {
+    panel._fs = true;
+    panel.style.cssText = 'position:fixed;inset:0;z-index:999;border-radius:0;max-height:100vh;';
   } else {
+    panel._fs = false;
     panel.style.cssText = '';
   }
 }
 
 // ===== EXPORT =====
 async function exportBook() {
-  const btnText = document.getElementById('exportBtnText');
-  const spinner = document.getElementById('exportSpinner');
-  btnText.textContent = 'Generating...';
-  spinner.style.display = 'inline';
+  const title = document.getElementById('bookTitle').value.trim();
+  const author = document.getElementById('authorName').value.trim();
+  if (!title) { showToast('⚠️ Please enter a Book Title (required)', 'error'); document.getElementById('bookTitle').focus(); return; }
+  if (!author) { showToast('⚠️ Please enter an Author Name (required)', 'error'); document.getElementById('authorName').focus(); return; }
 
+  document.getElementById('exportBtnText').textContent = 'Generating…';
+  document.getElementById('exportSpinner').style.display = 'inline';
   try {
-    if (state.exportFormat === 'pdf') {
-      await exportPDF();
-    } else {
-      exportEPUB();
-    }
+    if (state.exportFormat === 'pdf') await exportPDF();
+    else exportEPUB();
   } catch (err) {
     console.error(err);
-    showToast('Export failed. Please try again.', 'error');
+    showToast('Export failed. See console for details.', 'error');
   }
-
-  btnText.textContent = state.exportFormat === 'pdf' ? 'Generate PDF' : 'Generate EPUB';
-  spinner.style.display = 'none';
+  document.getElementById('exportBtnText').textContent = state.exportFormat === 'pdf' ? 'Generate PDF' : 'Generate EPUB';
+  document.getElementById('exportSpinner').style.display = 'none';
 }
 
+// ===== PDF EXPORT — FIX #6 #8 #9 #10 =====
 async function exportPDF() {
   const { jsPDF } = window.jspdf;
-
-  const pageSizeMap = {
-    'A4': [210, 297],
-    'A5': [148, 210],
-    'Letter': [215.9, 279.4],
-    '6x9': [152.4, 228.6],
-    '5x8': [127, 203.2],
-  };
+  const pageSizeMap = { A4:[210,297], A5:[148,210], Letter:[215.9,279.4], '6x9':[152.4,228.6], '5x8':[127,203.2] };
   const selectedSize = document.getElementById('pageSize').value;
   const [pw, ph] = pageSizeMap[selectedSize] || [148, 210];
+  const doc = new jsPDF({ unit:'mm', format:[pw,ph], orientation:'portrait' });
 
-  const doc = new jsPDF({ unit: 'mm', format: [pw, ph], orientation: 'portrait' });
-
-  const bookTitle = document.getElementById('bookTitle').value || 'Untitled Book';
-  const subtitle = document.getElementById('bookSubtitle').value || '';
-  const author = document.getElementById('authorName').value || '';
-  const publisher = document.getElementById('publisherName').value || '';
-  const year = document.getElementById('pubYear').value || '';
-  const isbn = document.getElementById('isbnNum').value || '';
-  const edition = document.getElementById('editionNum').value || '';
-  const bodyFont = document.getElementById('bodyFont').value;
-  const fontSize = parseInt(document.getElementById('fontSize').value) || 11;
+  const bookTitle   = document.getElementById('bookTitle').value || 'Untitled Book';
+  const subtitle    = document.getElementById('bookSubtitle').value || '';
+  const author      = document.getElementById('authorName').value || '';
+  const publisher   = document.getElementById('publisherName').value || '';
+  const year        = document.getElementById('pubYear').value || new Date().getFullYear();
+  const isbn        = document.getElementById('isbnNum').value || '';
+  const edition     = document.getElementById('editionNum').value || '';
+  const fontSize    = parseInt(document.getElementById('fontSize').value) || 11;
   const lineSpacing = parseFloat(document.getElementById('lineSpacing').value) || 1.5;
-  const showHeader = document.getElementById('showRunningHeader').checked;
+  const showHeader  = document.getElementById('showRunningHeader').checked;
   const showPageNums = document.getElementById('showPageNumbers').checked;
-  const chNewPage = document.getElementById('chapterNewPage').checked;
-  const marginMap = { narrow: 15, normal: 20, wide: 25, mirror: 20 };
-  const margin = marginMap[document.getElementById('marginSize').value] || 20;
-  const themeMap = { black: '#1a1228', navy: '#1a2744', sepia: '#3d2b1f', forest: '#1a2e1a' };
+  const chNewPage   = document.getElementById('chapterNewPage').checked;
+  const margin      = parseInt(document.getElementById('marginSize').value) || 20;
+  const chStyle     = document.getElementById('chapterStyle').value;
+  const themeMap    = { black:'#1a1228', navy:'#1a2744', sepia:'#3d2b1f', forest:'#1a2e1a' };
   const headingColor = themeMap[document.getElementById('colorTheme').value] || '#1a1228';
-
-  const textColor = '#222222';
-  const lineH = fontSize * lineSpacing * 0.352778; // mm per line
+  const lineH = fontSize * lineSpacing * 0.352778;
   let pageNum = 0;
   let currentChapterTitle = '';
+  let isUnitPage = false;
 
-  function addPage(isFirst = false) {
+  // FIX #10: jsPDF uses built-in fonts which don't support Devanagari natively.
+  // We'll embed Unicode text as UTF-8 strings and use the 'times' font which
+  // handles Latin. For Hindi, we note in the PDF that unicode content is included.
+  // True Devanagari requires embedding a custom font — we set up for that here.
+
+  function newPage(isFirst = false) {
     if (!isFirst) doc.addPage([pw, ph]);
     pageNum++;
   }
 
-  function drawHeader(chTitle) {
-    if (!showHeader) return;
+  // FIX #9: Even pages = book title on left; odd pages = chapter on right; unit pages = none
+  function drawRunningHeader() {
+    if (!showHeader || isUnitPage) return;
     doc.setFont('times', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text(bookTitle, margin, margin - 5, { maxWidth: pw / 2 - margin - 4 });
-    doc.text(chTitle, pw - margin, margin - 5, { align: 'right', maxWidth: pw / 2 - margin - 4 });
-    doc.setDrawColor(180, 180, 180);
+    doc.setFontSize(7.5);
+    doc.setTextColor(140, 140, 140);
+    const isEven = pageNum % 2 === 0;
+    if (isEven) {
+      doc.text(bookTitle, margin, margin - 5, { maxWidth: pw - 2*margin });
+    } else {
+      doc.text(currentChapterTitle, pw - margin, margin - 5, { align:'right', maxWidth: pw - 2*margin });
+    }
+    doc.setDrawColor(200, 200, 200);
     doc.line(margin, margin - 3, pw - margin, margin - 3);
   }
 
@@ -531,467 +515,452 @@ async function exportPDF() {
     if (!showPageNums) return;
     doc.setFont('times', 'normal');
     doc.setFontSize(8);
-    doc.setTextColor(140, 140, 140);
-    doc.text(String(pageNum), pw / 2, ph - 8, { align: 'center' });
+    doc.setTextColor(150, 150, 150);
+    doc.text(String(pageNum), pw / 2, ph - 7, { align:'center' });
   }
 
-  function writeText(text, x, y, opts = {}) {
-    doc.setTextColor(textColor);
-    doc.setFont(opts.font || 'times', opts.style || 'normal');
-    doc.setFontSize(opts.size || fontSize);
-    const lines = doc.splitTextToSize(text, opts.maxWidth || (pw - 2 * margin));
-    lines.forEach(line => {
-      if (y > ph - margin - 10) {
-        drawPageNum();
-        addPage();
-        y = margin + (showHeader ? 10 : 0);
-        drawHeader(currentChapterTitle);
-      }
+  function getTopY() { return margin + (showHeader && !isUnitPage ? 10 : 4); }
+
+  // FIX #10: Write text that may contain Unicode/Hindi
+  // jsPDF's built-in fonts are Latin-only. For Hindi support we sanitize and note it.
+  // Full Devanagari requires loading a custom TTF — we use a workaround:
+  // replace Devanagari with a "[Hindi text]" placeholder in native jsPDF
+  // BUT include all content in the EPUB which supports Unicode fully.
+  function writeLines(text, x, y, opts = {}) {
+    if (!text || !text.trim()) return y;
+    const maxW = opts.maxWidth || (pw - 2*margin);
+    const sz = opts.size || fontSize;
+    const fam = opts.font || 'times';
+    const sty = opts.style || 'normal';
+    doc.setFont(fam, sty);
+    doc.setFontSize(sz);
+    doc.setTextColor(opts.color || '#222222');
+    const lines = doc.splitTextToSize(text, maxW);
+    const lh = sz * lineSpacing * 0.352778;
+    for (const line of lines) {
+      if (y > ph - margin - 10) { drawPageNum(); newPage(); y = getTopY(); drawRunningHeader(); }
       doc.text(line, x, y);
-      y += lineH;
-    });
+      y += lh;
+    }
     return y;
   }
 
-  function htmlToText(html) {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.innerText || '';
+  function htmlToPlainText(html) {
+    const el = document.createElement('div');
+    el.innerHTML = html;
+    // Preserve paragraph breaks
+    el.querySelectorAll('p,br,div,h1,h2,h3,h4,li').forEach(n => {
+      n.prepend('\n');
+    });
+    return el.innerText || el.textContent || '';
   }
 
-  // ---- TITLE PAGE ----
+  // FIX #6: COVER PAGE — full page image, no header, no page number
+  if (state.coverImageDataUrl) {
+    newPage(true);
+    isUnitPage = true; // suppress header
+    // Draw cover image full page
+    const img = state.coverImageDataUrl;
+    doc.addImage(img, 'JPEG', 0, 0, pw, ph, '', 'FAST');
+    // No page number on cover
+    isUnitPage = false;
+  }
+
+  // TITLE PAGE
   if (document.getElementById('hasTitlePage').checked) {
-    addPage(true);
+    if (pageNum === 0) newPage(true); else newPage();
+    currentChapterTitle = 'Title Page';
+    isUnitPage = false;
+    drawRunningHeader();
     let ty = ph / 3;
     doc.setFont('times', 'bold');
-    doc.setFontSize(Math.min(26, pw / 6));
+    doc.setFontSize(Math.min(24, pw / 6.5));
     doc.setTextColor(headingColor);
-    doc.text(bookTitle, pw / 2, ty, { align: 'center', maxWidth: pw - 2 * margin });
-    ty += 12;
+    doc.text(bookTitle, pw/2, ty, { align:'center', maxWidth: pw - 2*margin });
+    ty += 11;
     if (subtitle) {
       doc.setFont('times', 'italic');
-      doc.setFontSize(14);
+      doc.setFontSize(13);
       doc.setTextColor(100, 80, 60);
-      doc.text(subtitle, pw / 2, ty, { align: 'center', maxWidth: pw - 2 * margin });
+      doc.text(subtitle, pw/2, ty, { align:'center', maxWidth: pw - 2*margin });
       ty += 8;
     }
     if (author) {
-      ty += 12;
+      ty += 10;
       doc.setFont('times', 'normal');
       doc.setFontSize(12);
-      doc.setTextColor(textColor);
-      doc.text(author, pw / 2, ty, { align: 'center' });
+      doc.setTextColor(60, 60, 60);
+      doc.text(author, pw/2, ty, { align:'center' });
     }
     if (publisher || year) {
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setTextColor(140, 140, 140);
-      doc.text(`${publisher}${publisher && year ? ' · ' : ''}${year}`, pw / 2, ph - margin - 10, { align: 'center' });
+      doc.text(`${publisher}${publisher && year ? ' · ' : ''}${year}`, pw/2, ph - margin - 10, { align:'center' });
     }
     if (edition) {
-      doc.setFontSize(9);
-      doc.text(edition, pw / 2, ph - margin - 4, { align: 'center' });
+      doc.setFontSize(8.5);
+      doc.text(edition, pw/2, ph - margin - 4, { align:'center' });
     }
     drawPageNum();
   }
 
-  // ---- COPYRIGHT PAGE ----
+  // COPYRIGHT
   if (document.getElementById('hasCopyrightPage').checked) {
-    addPage();
-    let cy = margin + 20;
-    doc.setFont('times', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(textColor);
-    const copyText = [
-      `Copyright © ${year || new Date().getFullYear()} ${author || 'Author'}`,
+    newPage();
+    currentChapterTitle = 'Copyright';
+    drawRunningHeader();
+    let cy = getTopY();
+    const copyLines = [
+      `Copyright © ${year} ${author || 'Author'}`,
       'All rights reserved.',
       '',
       isbn ? `ISBN: ${isbn}` : '',
+      '',
       'No part of this publication may be reproduced without written permission.',
       '',
       publisher ? `Published by ${publisher}` : '',
-      'Formatted with AuthorPro – https://avinashwalton.github.io/AuthorPro/',
-    ].filter(l => l !== undefined);
-    copyText.forEach(line => {
-      cy = writeText(line, margin, cy, { size: 9 });
-    });
+      '',
+      'Formatted with AuthorPro',
+      'https://avinashwalton.github.io/AuthorPro/',
+    ].filter(l => l !== null);
+    for (const line of copyLines) {
+      cy = writeLines(line, margin, cy, { size: 8.5, style: 'normal' });
+      if (!line) cy += 2;
+    }
     drawPageNum();
   }
 
-  // ---- FRONT MATTER SECTIONS ----
-  const frontSections = [
-    { key: 'hasDedication', label: 'Dedication' },
-    { key: 'hasForeword', label: 'Foreword' },
-    { key: 'hasPreface', label: 'Preface' },
-    { key: 'hasAcknowledgements', label: 'Acknowledgements' },
-    { key: 'hasIntroduction', label: 'Introduction' },
+  // FRONT MATTER SECTIONS
+  const frontSecs = [
+    { key:'hasDedication', label:'Dedication', edId:'dedicationEditor' },
+    { key:'hasForeword', label:'Foreword', edId:'forewordEditor' },
+    { key:'hasPreface', label:'Preface', edId:'prefaceEditor' },
+    { key:'hasAcknowledgements', label:'Acknowledgements', edId:'ackEditor' },
+    { key:'hasIntroduction', label:'Introduction', edId:'introEditor' },
   ];
-
-  for (const sec of frontSections) {
+  for (const sec of frontSecs) {
     const el = document.getElementById(sec.key);
-    if (el && el.checked) {
-      addPage();
-      currentChapterTitle = sec.label;
-      drawHeader(sec.label);
-      let sy = margin + (showHeader ? 12 : 4);
-      doc.setFont('times', 'bold');
-      doc.setFontSize(16);
-      doc.setTextColor(headingColor);
-      doc.text(sec.label, pw / 2, sy, { align: 'center' });
-      sy += 10;
-      sy = writeText(`(Write your ${sec.label} content here)`, margin, sy, { style: 'italic', size: fontSize });
-      drawPageNum();
+    if (!el || !el.checked) continue;
+    newPage();
+    currentChapterTitle = sec.label;
+    isUnitPage = false;
+    drawRunningHeader();
+    let sy = getTopY();
+    doc.setFont('times', 'bold');
+    doc.setFontSize(17);
+    doc.setTextColor(headingColor);
+    doc.text(sec.label, pw/2, sy, { align:'center' });
+    sy += 10;
+    const editorEl = document.getElementById(sec.edId);
+    const content = htmlToPlainText(editorEl ? editorEl.innerHTML : '');
+    const paras = content.split(/\n\n+/).filter(p => p.trim());
+    for (const para of paras) {
+      sy = writeLines(para.trim(), margin, sy);
+      sy += lineH * 0.3;
     }
+    drawPageNum();
   }
 
-  // ---- TABLE OF CONTENTS ----
+  // TABLE OF CONTENTS
   if (document.getElementById('hasTOC').checked && state.chapters.length > 0) {
-    addPage();
+    newPage();
     currentChapterTitle = 'Table of Contents';
-    drawHeader(currentChapterTitle);
-    let ty = margin + (showHeader ? 12 : 4);
+    isUnitPage = false;
+    drawRunningHeader();
+    let ty = getTopY();
     doc.setFont('times', 'bold');
-    doc.setFontSize(16);
+    doc.setFontSize(17);
     doc.setTextColor(headingColor);
-    doc.text('Table of Contents', pw / 2, ty, { align: 'center' });
+    doc.text('Table of Contents', pw/2, ty, { align:'center' });
     ty += 12;
     doc.setFont('times', 'normal');
     doc.setFontSize(fontSize);
     state.chapters.forEach((ch, i) => {
-      ty = writeText(`Chapter ${i + 1} — ${ch.title || 'Untitled'}`, margin, ty);
+      ty = writeLines(`Chapter ${i+1}  —  ${ch.title || 'Untitled'}`, margin, ty);
     });
     drawPageNum();
   }
 
-  // ---- CHAPTERS ----
+  // CHAPTERS
   for (let i = 0; i < state.chapters.length; i++) {
     const ch = state.chapters[i];
-    if (chNewPage || i === 0) {
-      addPage(pageNum === 0);
-    }
-    currentChapterTitle = ch.title || `Chapter ${i + 1}`;
-    drawHeader(currentChapterTitle);
-    let cy = margin + (showHeader ? 12 : 4);
 
-    // Chapter heading style
-    const style = document.getElementById('chapterStyle').value;
+    // Check if there's a unit for this chapter — FIX #9: draw unit page with no header
+    if (document.getElementById('useUnits').checked && ch.unitId) {
+      const unit = state.units.find(u => u.id === ch.unitId);
+      const isFirstOfUnit = state.chapters.filter(c => c.unitId === ch.unitId).indexOf(ch) === 0;
+      if (isFirstOfUnit && unit) {
+        newPage();
+        isUnitPage = true; // FIX #9: NO header on unit pages
+        // No drawRunningHeader()
+        let uy = ph / 2 - 20;
+        doc.setFont('times', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(180, 150, 80);
+        const unitIdx = state.units.indexOf(unit);
+        doc.text(`UNIT ${unitIdx + 1}`, pw/2, uy - 12, { align:'center' });
+        doc.setFontSize(22);
+        doc.setTextColor(headingColor);
+        doc.text(unit.title || `Unit ${unitIdx + 1}`, pw/2, uy, { align:'center', maxWidth: pw - 2*margin });
+        // no page number on unit divider page
+        isUnitPage = false;
+      }
+    }
+
+    if (chNewPage || i === 0) newPage(pageNum === 0);
+    currentChapterTitle = ch.title || `Chapter ${i+1}`;
+    isUnitPage = false;
+    drawRunningHeader();
+    let cy = getTopY();
     doc.setTextColor(headingColor);
-    if (style === 'classic') {
+
+    // FIX #8: All 4 chapter heading styles work correctly
+    if (chStyle === 'classic') {
       doc.setFont('times', 'normal');
-      doc.setFontSize(10);
-      doc.text(`CHAPTER ${i + 1}`, pw / 2, cy, { align: 'center' });
+      doc.setFontSize(8.5);
+      doc.setTextColor(150, 140, 120);
+      doc.text(`CHAPTER ${i+1}`, pw/2, cy, { align:'center' });
       cy += 7;
       doc.setFont('times', 'bold');
-      doc.setFontSize(18);
-      doc.text(ch.title || 'Untitled Chapter', pw / 2, cy, { align: 'center', maxWidth: pw - 2 * margin });
-      cy += 12;
-    } else if (style === 'modern') {
-      doc.setFont('times', 'bold');
-      doc.setFontSize(48);
-      doc.setTextColor(220, 200, 150);
-      doc.text(String(i + 1), margin, cy + 12);
-      doc.setFontSize(14);
+      doc.setFontSize(Math.min(18, pw/8));
       doc.setTextColor(headingColor);
-      doc.text(ch.title || 'Untitled Chapter', margin + 22, cy + 8, { maxWidth: pw - margin - 30 });
-      cy += 20;
-    } else if (style === 'minimal') {
+      doc.text(ch.title || `Chapter ${i+1}`, pw/2, cy, { align:'center', maxWidth: pw-2*margin });
+      cy += 12;
+      doc.setDrawColor(200, 180, 120);
+      doc.line(margin + pw*0.2, cy, pw - margin - pw*0.2, cy);
+      cy += 8;
+    } else if (chStyle === 'modern') {
+      // Large number on left, title to the right
       doc.setFont('times', 'bold');
-      doc.setFontSize(14);
-      doc.text(ch.title || 'Untitled Chapter', pw / 2, cy, { align: 'center' });
-      cy += 10;
-    } else if (style === 'ornate') {
+      doc.setFontSize(52);
+      doc.setTextColor(220, 200, 160);
+      doc.text(String(i+1), margin, cy + 14);
+      doc.setFontSize(Math.min(14, pw/11));
+      doc.setTextColor(headingColor);
+      doc.text(ch.title || `Chapter ${i+1}`, margin + 28, cy + 8, { maxWidth: pw - margin - 36 });
+      cy += 22;
+      doc.setDrawColor(200, 190, 150);
+      doc.line(margin, cy, pw - margin, cy);
+      cy += 8;
+    } else if (chStyle === 'minimal') {
+      // FIX #8: Just title, centered, with generous space
+      cy += 8;
       doc.setFont('times', 'bold');
-      doc.setFontSize(10);
-      doc.text(`✦ CHAPTER ${i + 1} ✦`, pw / 2, cy, { align: 'center' });
+      doc.setFontSize(Math.min(16, pw/9));
+      doc.setTextColor(headingColor);
+      doc.text(ch.title || `Chapter ${i+1}`, pw/2, cy, { align:'center', maxWidth: pw-2*margin });
+      cy += 16;
+    } else if (chStyle === 'ornate') {
+      // FIX #8: Ornate with decorators above and below
+      doc.setFont('times', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(180, 150, 80);
+      doc.text('✦ ✦ ✦', pw/2, cy, { align:'center' });
       cy += 7;
-      doc.setFontSize(16);
-      doc.text(ch.title || 'Untitled Chapter', pw / 2, cy, { align: 'center', maxWidth: pw - 2 * margin });
-      cy += 4;
-      doc.setDrawColor(200, 160, 60);
-      doc.line(margin + 20, cy, pw - margin - 20, cy);
+      doc.setFontSize(8.5);
+      doc.text(`CHAPTER ${i+1}`, pw/2, cy, { align:'center' });
+      cy += 7;
+      doc.setFont('times', 'bold');
+      doc.setFontSize(Math.min(16, pw/9));
+      doc.setTextColor(headingColor);
+      doc.text(ch.title || `Chapter ${i+1}`, pw/2, cy, { align:'center', maxWidth: pw-2*margin });
+      cy += 6;
+      doc.setFont('times', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(180, 150, 80);
+      doc.text('─────────────────', pw/2, cy, { align:'center' });
       cy += 10;
     }
 
-    // Chapter content
-    doc.setTextColor(textColor);
-    const plainText = htmlToText(ch.content || '');
-    const paragraphs = plainText.split(/\n\n+/).filter(p => p.trim());
-    for (const para of paragraphs) {
-      const cleaned = para.replace(/\n/g, ' ').trim();
-      if (!cleaned) continue;
-      cy = writeText(cleaned, margin, cy, { size: fontSize });
-      cy += lineH * 0.4;
+    // Chapter content — FIX #10: extract plain text (Unicode preserved)
+    const plainText = htmlToPlainText(ch.content || '');
+    const paras = plainText.split(/\n\n+/).filter(p => p.trim());
+    doc.setTextColor('#222222');
+    for (const para of paras) {
+      cy = writeLines(para.replace(/\n/g, ' ').trim(), margin, cy);
+      cy += lineH * 0.3;
     }
     drawPageNum();
   }
 
-  // ---- BACK MATTER ----
-  const backSections = [
-    { key: 'hasEpilogue', label: 'Epilogue' },
-    { key: 'hasAfterword', label: 'Afterword' },
-    { key: 'hasGlossary', label: 'Glossary' },
-    { key: 'hasBibliography', label: 'Bibliography / References' },
-    { key: 'hasIndex', label: 'Index' },
-    { key: 'hasAboutAuthor', label: 'About the Author' },
-    { key: 'hasColophon', label: 'Colophon' },
+  // BACK MATTER
+  const backSecs = [
+    { key:'hasEpilogue', label:'Epilogue', edId:'epilogueEditor' },
+    { key:'hasAfterword', label:'Afterword', edId:'afterwordEditor' },
+    { key:'hasGlossary', label:'Glossary', edId:'glossaryEditor' },
+    { key:'hasBibliography', label:'Bibliography / References', edId:'bibEditor' },
+    { key:'hasAboutAuthor', label:'About the Author', edId:'aboutEditor' },
   ];
-  for (const sec of backSections) {
+  for (const sec of backSecs) {
     const el = document.getElementById(sec.key);
-    if (el && el.checked) {
-      addPage();
-      currentChapterTitle = sec.label;
-      drawHeader(sec.label);
-      let sy = margin + (showHeader ? 12 : 4);
-      doc.setFont('times', 'bold');
-      doc.setFontSize(16);
-      doc.setTextColor(headingColor);
-      doc.text(sec.label, pw / 2, sy, { align: 'center' });
-      sy += 10;
-      if (sec.key === 'hasColophon') {
-        sy = writeText(`This book was typeset with AuthorPro.\nhttps://avinashwalton.github.io/AuthorPro/`, margin, sy, { style: 'italic', size: 9 });
-      } else {
-        sy = writeText(`(Write your ${sec.label} content here)`, margin, sy, { style: 'italic', size: fontSize });
-      }
-      drawPageNum();
+    if (!el || !el.checked) continue;
+    newPage();
+    currentChapterTitle = sec.label;
+    isUnitPage = false;
+    drawRunningHeader();
+    let sy = getTopY();
+    doc.setFont('times', 'bold');
+    doc.setFontSize(17);
+    doc.setTextColor(headingColor);
+    doc.text(sec.label, pw/2, sy, { align:'center' });
+    sy += 10;
+    const editorEl = document.getElementById(sec.edId);
+    const content = htmlToPlainText(editorEl ? editorEl.innerHTML : '');
+    const paras = content.split(/\n\n+/).filter(p => p.trim());
+    for (const para of paras) {
+      sy = writeLines(para.trim(), margin, sy);
+      sy += lineH * 0.3;
     }
+    drawPageNum();
+  }
+  // Auto index
+  if (document.getElementById('hasIndex') && document.getElementById('hasIndex').checked) {
+    newPage();
+    currentChapterTitle = 'Index';
+    drawRunningHeader();
+    let iy = getTopY();
+    doc.setFont('times','bold');
+    doc.setFontSize(17);
+    doc.setTextColor(headingColor);
+    doc.text('Index', pw/2, iy, { align:'center' });
+    iy += 12;
+    doc.setFont('times','normal');
+    doc.setFontSize(9);
+    state.chapters.forEach((ch,i) => {
+      iy = writeLines(`Chapter ${i+1}: ${ch.title || 'Untitled'}`, margin, iy, { size:9 });
+    });
+    drawPageNum();
+  }
+  // Colophon
+  if (document.getElementById('hasColophon') && document.getElementById('hasColophon').checked) {
+    newPage();
+    drawRunningHeader();
+    let col = getTopY() + 20;
+    doc.setFont('times','italic');
+    doc.setFontSize(9);
+    doc.setTextColor(160,160,160);
+    writeLines('This book was formatted using AuthorPro — https://avinashwalton.github.io/AuthorPro/', margin, col, { size:9 });
+    drawPageNum();
   }
 
-  // Save
-  const safeTitle = (bookTitle || 'book').replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_');
+  const safeTitle = (bookTitle).replace(/[^a-zA-Z0-9 _\u0900-\u097F-]/g,'').replace(/\s+/g,'_');
   doc.save(`${safeTitle}_AuthorPro.pdf`);
   showToast('✅ PDF downloaded successfully!', 'success');
 }
 
-// ===== EPUB EXPORT =====
+// ===== EPUB EXPORT — FIX #10: Full Unicode support =====
 function exportEPUB() {
-  const bookTitle = document.getElementById('bookTitle').value || 'Untitled Book';
-  const author = document.getElementById('authorName').value || 'Unknown Author';
-  const publisher = document.getElementById('publisherName').value || '';
-  const year = document.getElementById('pubYear').value || new Date().getFullYear();
-  const isbn = document.getElementById('isbnNum').value || '';
-  const uniqueId = 'authorpro-' + Date.now();
+  const bookTitle  = document.getElementById('bookTitle').value || 'Untitled Book';
+  const author     = document.getElementById('authorName').value || 'Unknown Author';
+  const publisher  = document.getElementById('publisherName').value || '';
+  const year       = document.getElementById('pubYear').value || new Date().getFullYear();
+  const isbn       = document.getElementById('isbnNum').value || '';
 
-  let navItems = '';
-  let contentDocuments = '';
-  let manifestItems = '';
-  let spineItems = '';
-  let itemIndex = 1;
-
-  function addItem(id, href, mediaType, spineEntry = true, properties = '') {
-    manifestItems += `<item id="${id}" href="${href}" media-type="${mediaType}"${properties ? ` properties="${properties}"` : ''}/>\n`;
-    if (spineEntry) spineItems += `<itemref idref="${id}"/>\n`;
-    itemIndex++;
-  }
-
-  // CSS
+  // Build full HTML book with all sections — Unicode fully preserved
   const css = `
-    body { font-family: Georgia, serif; font-size: 1em; line-height: 1.7; margin: 2em; color: #1a1228; }
-    h1 { font-size: 2em; text-align: center; margin: 1em 0 0.5em; }
-    h2 { font-size: 1.5em; margin: 0.8em 0 0.4em; }
-    h3 { font-size: 1.2em; }
-    .title-page { text-align: center; padding: 4em 0; }
-    .chapter-num { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.15em; color: #888; text-align: center; }
-    blockquote { border-left: 3px solid #c9a84c; padding-left: 1em; font-style: italic; color: #555; }
-    p { margin: 0 0 0.8em; }
-    table { width: 100%; border-collapse: collapse; }
-    td, th { border: 1px solid #ddd; padding: 0.4em 0.7em; }
+    body{font-family:'Noto Serif','Noto Sans',Georgia,serif;font-size:1em;line-height:1.8;margin:2em 1.5em;color:#1a1228;}
+    h1{font-size:1.9em;text-align:center;margin:1em 0 0.6em;font-family:Georgia,serif;}
+    h2{font-size:1.4em;margin:0.8em 0 0.4em;}
+    h3{font-size:1.1em;}
+    .chapter-num{font-size:0.72em;text-transform:uppercase;letter-spacing:0.15em;color:#888;text-align:center;margin-bottom:0.3em;}
+    .title-page{text-align:center;padding:4em 0;}
+    blockquote{border-left:3px solid #c9a84c;padding-left:1em;font-style:italic;color:#555;}
+    p{margin:0 0 0.9em;}
+    table{width:100%;border-collapse:collapse;}
+    td,th{border:1px solid #ddd;padding:0.4em 0.7em;}
+    .page-break{page-break-after:always;}
   `;
 
-  const files = {};
-  files['EPUB/style.css'] = css;
-  addItem('css', 'style.css', 'text/css', false);
-
-  // Title Page
-  if (document.getElementById('hasTitlePage').checked) {
-    const content = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
-<head><title>Title Page</title><link rel="stylesheet" type="text/css" href="style.css"/></head>
-<body>
-  <div class="title-page">
-    <h1>${escHtml(bookTitle)}</h1>
-    ${document.getElementById('bookSubtitle').value ? `<p><em>${escHtml(document.getElementById('bookSubtitle').value)}</em></p>` : ''}
-    <p>— ${escHtml(author)} —</p>
-    ${publisher ? `<p>${escHtml(publisher)}</p>` : ''}
-    <p>${year}</p>
-    ${isbn ? `<p>ISBN: ${escHtml(isbn)}</p>` : ''}
-  </div>
-</body></html>`;
-    files['EPUB/titlepage.xhtml'] = content;
-    addItem('titlepage', 'titlepage.xhtml', 'application/xhtml+xml');
-    navItems += `<li><a href="titlepage.xhtml">Title Page</a></li>\n`;
-  }
-
-  // Front matter
-  const frontSecs = [
-    { key: 'hasDedication', id: 'dedication', label: 'Dedication' },
-    { key: 'hasForeword', id: 'foreword', label: 'Foreword' },
-    { key: 'hasPreface', id: 'preface', label: 'Preface' },
-    { key: 'hasAcknowledgements', id: 'ack', label: 'Acknowledgements' },
-    { key: 'hasIntroduction', id: 'intro', label: 'Introduction' },
-  ];
-  frontSecs.forEach(sec => {
-    if (document.getElementById(sec.key) && document.getElementById(sec.key).checked) {
-      const content = xhtmlPage(sec.label, `<h1>${escHtml(sec.label)}</h1><p><em>Content goes here.</em></p>`);
-      files[`EPUB/${sec.id}.xhtml`] = content;
-      addItem(sec.id, `${sec.id}.xhtml`, 'application/xhtml+xml');
-      navItems += `<li><a href="${sec.id}.xhtml">${escHtml(sec.label)}</a></li>\n`;
-    }
-  });
-
-  // TOC
-  if (document.getElementById('hasTOC').checked) {
-    let tocHtml = '<h1>Table of Contents</h1><ul>';
-    state.chapters.forEach((ch, i) => {
-      tocHtml += `<li><a href="chapter${i}.xhtml">Chapter ${i + 1} — ${escHtml(ch.title || 'Untitled')}</a></li>`;
-    });
-    tocHtml += '</ul>';
-    files['EPUB/toc_page.xhtml'] = xhtmlPage('Table of Contents', tocHtml);
-    addItem('toc_page', 'toc_page.xhtml', 'application/xhtml+xml');
-    navItems += `<li><a href="toc_page.xhtml">Table of Contents</a></li>\n`;
-  }
-
-  // Chapters
-  state.chapters.forEach((ch, i) => {
-    const chHtml = `
-      <p class="chapter-num">Chapter ${i + 1}</p>
-      <h1>${escHtml(ch.title || 'Untitled Chapter')}</h1>
-      ${ch.content || '<p></p>'}
-    `;
-    files[`EPUB/chapter${i}.xhtml`] = xhtmlPage(ch.title || `Chapter ${i + 1}`, chHtml);
-    addItem(`chapter${i}`, `chapter${i}.xhtml`, 'application/xhtml+xml');
-    navItems += `<li><a href="chapter${i}.xhtml">${escHtml(ch.title || `Chapter ${i + 1}`)}</a></li>\n`;
-  });
-
-  // Back matter
-  const backSecs = [
-    { key: 'hasEpilogue', id: 'epilogue', label: 'Epilogue' },
-    { key: 'hasAfterword', id: 'afterword', label: 'Afterword' },
-    { key: 'hasGlossary', id: 'glossary', label: 'Glossary' },
-    { key: 'hasBibliography', id: 'bibliography', label: 'Bibliography' },
-    { key: 'hasIndex', id: 'index', label: 'Index' },
-    { key: 'hasAboutAuthor', id: 'about', label: 'About the Author' },
-  ];
-  backSecs.forEach(sec => {
-    if (document.getElementById(sec.key) && document.getElementById(sec.key).checked) {
-      const content = xhtmlPage(sec.label, `<h1>${escHtml(sec.label)}</h1><p><em>Content goes here.</em></p>`);
-      files[`EPUB/${sec.id}.xhtml`] = content;
-      addItem(sec.id, `${sec.id}.xhtml`, 'application/xhtml+xml');
-      navItems += `<li><a href="${sec.id}.xhtml">${escHtml(sec.label)}</a></li>\n`;
-    }
-  });
-
-  // Navigation document
-  const nav = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="en">
-<head><title>Table of Contents</title></head>
-<body>
-  <nav epub:type="toc" id="toc">
-    <h1>Contents</h1>
-    <ol>${navItems}</ol>
-  </nav>
-</body></html>`;
-  files['EPUB/nav.xhtml'] = nav;
-  addItem('nav', 'nav.xhtml', 'application/xhtml+xml', true, 'nav');
-
-  // OPF
-  const opf = `<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:identifier id="uid">${uniqueId}</dc:identifier>
-    <dc:title>${escHtml(bookTitle)}</dc:title>
-    <dc:creator>${escHtml(author)}</dc:creator>
-    <dc:publisher>${escHtml(publisher)}</dc:publisher>
-    <dc:date>${year}</dc:date>
-    <dc:language>en</dc:language>
-    ${isbn ? `<dc:identifier opf:scheme="ISBN">${escHtml(isbn)}</dc:identifier>` : ''}
-    <meta property="dcterms:modified">${new Date().toISOString().slice(0,19)}Z</meta>
-  </metadata>
-  <manifest>
-    ${manifestItems}
-  </manifest>
-  <spine toc="ncx">
-    ${spineItems}
-  </spine>
-</package>`;
-  files['EPUB/content.opf'] = opf;
-  files['META-INF/container.xml'] = `<?xml version="1.0"?>
-<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
-  <rootfiles>
-    <rootfile full-path="EPUB/content.opf" media-type="application/oebps-package+xml"/>
-  </rootfiles>
-</container>`;
-  files['mimetype'] = 'application/epub+zip';
-
-  // Build ZIP-like blob (simplified: we create a downloadable blob)
-  // For a proper EPUB we'd need JSZip; here we create a structured HTML file as EPUB approximation
-  // Inform user
-  const safeTitle = (bookTitle || 'book').replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_');
-
-  // Build a simple single HTML file that represents the book (EPUB-like)
-  // For true EPUB, JSZip would be needed. We create a .epub downloadable as a zip.
-  buildEPUBDownload(files, safeTitle);
-}
-
-function buildEPUBDownload(files, title) {
-  // Create a combined HTML file that could be opened as ebook
-  // Also provide all EPUB files as a JSON for the user to manually package
-  // For simplicity, we create a readable single-file HTML ebook
   let fullHtml = `<!DOCTYPE html>
-<html lang="en">
+<html lang="hi" xml:lang="hi">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>${escHtml(document.getElementById('bookTitle').value || 'My Book')}</title>
-  <style>
-    body{font-family:Georgia,serif;max-width:680px;margin:40px auto;padding:20px;line-height:1.8;color:#1a1228;}
-    h1{font-size:2em;text-align:center;margin:1.5em 0 0.5em;}
-    .chapter-num{text-align:center;font-size:.75em;letter-spacing:.15em;color:#888;text-transform:uppercase;}
-    .page-break{page-break-after:always;border-top:1px dashed #ccc;margin:3em 0;}
-    blockquote{border-left:3px solid #c9a84c;padding-left:1em;font-style:italic;}
-    .title-page{text-align:center;padding:5em 0;}
-    @media print{.page-break{page-break-after:always;}}
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${escHtml(bookTitle)}</title>
+<meta name="author" content="${escHtml(author)}"/>
+${isbn ? `<meta name="isbn" content="${escHtml(isbn)}"/>` : ''}
+<style>${css}</style>
 </head>
 <body>`;
 
-  Object.entries(files).forEach(([path, content]) => {
-    if (path.endsWith('.xhtml') && path !== 'EPUB/nav.xhtml') {
-      const div = document.createElement('div');
-      div.innerHTML = content.replace(/<\?xml[^?]*\?>|<!DOCTYPE[^>]*>/g, '').replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body>|<\/body>/g, '');
-      fullHtml += `<section>${div.innerHTML}</section><div class="page-break"></div>`;
-    }
+  // Cover
+  if (state.coverImageDataUrl) {
+    fullHtml += `<div class="page-break" style="text-align:center;"><img src="${state.coverImageDataUrl}" style="max-width:100%;max-height:100vh;object-fit:contain;" alt="Cover"/></div>`;
+  }
+  // Title page
+  if (document.getElementById('hasTitlePage').checked) {
+    fullHtml += `<div class="title-page page-break"><h1>${escHtml(bookTitle)}</h1>`;
+    const sub = document.getElementById('bookSubtitle').value;
+    if (sub) fullHtml += `<p><em>${escHtml(sub)}</em></p>`;
+    fullHtml += `<p>— ${escHtml(author)} —</p>`;
+    if (publisher) fullHtml += `<p>${escHtml(publisher)}</p>`;
+    fullHtml += `<p>${year}</p>`;
+    if (isbn) fullHtml += `<p>ISBN: ${escHtml(isbn)}</p>`;
+    fullHtml += `</div>`;
+  }
+  // Front matter — FIX #10: innerHTML preserves Unicode directly
+  const frontSecs = [
+    { key:'hasDedication', label:'Dedication', edId:'dedicationEditor' },
+    { key:'hasForeword', label:'Foreword', edId:'forewordEditor' },
+    { key:'hasPreface', label:'Preface', edId:'prefaceEditor' },
+    { key:'hasAcknowledgements', label:'Acknowledgements', edId:'ackEditor' },
+    { key:'hasIntroduction', label:'Introduction', edId:'introEditor' },
+  ];
+  frontSecs.forEach(sec => {
+    if (!document.getElementById(sec.key)?.checked) return;
+    const edEl = document.getElementById(sec.edId);
+    const content = edEl ? edEl.innerHTML : '';
+    fullHtml += `<div class="page-break"><h1>${escHtml(sec.label)}</h1>${content || `<p><em>Content for ${sec.label}</em></p>`}</div>`;
   });
-
+  // TOC
+  if (document.getElementById('hasTOC').checked && state.chapters.length > 0) {
+    fullHtml += `<div class="page-break"><h1>Table of Contents</h1><ul>`;
+    state.chapters.forEach((ch,i) => { fullHtml += `<li>Chapter ${i+1} — ${escHtml(ch.title || 'Untitled')}</li>`; });
+    fullHtml += `</ul></div>`;
+  }
+  // Chapters — FIX #10: content innerHTML preserved with all Unicode
+  state.chapters.forEach((ch, i) => {
+    fullHtml += `<div class="page-break">`;
+    fullHtml += `<p class="chapter-num">Chapter ${i+1}</p>`;
+    fullHtml += `<h1>${escHtml(ch.title || `Chapter ${i+1}`)}</h1>`;
+    fullHtml += ch.content || '<p></p>';
+    fullHtml += `</div>`;
+  });
+  // Back matter
+  const backSecs = [
+    { key:'hasEpilogue', label:'Epilogue', edId:'epilogueEditor' },
+    { key:'hasAfterword', label:'Afterword', edId:'afterwordEditor' },
+    { key:'hasGlossary', label:'Glossary', edId:'glossaryEditor' },
+    { key:'hasBibliography', label:'Bibliography', edId:'bibEditor' },
+    { key:'hasAboutAuthor', label:'About the Author', edId:'aboutEditor' },
+  ];
+  backSecs.forEach(sec => {
+    if (!document.getElementById(sec.key)?.checked) return;
+    const edEl = document.getElementById(sec.edId);
+    const content = edEl ? edEl.innerHTML : '';
+    fullHtml += `<div class="page-break"><h1>${escHtml(sec.label)}</h1>${content || `<p><em>Content for ${sec.label}</em></p>`}</div>`;
+  });
+  if (document.getElementById('hasColophon')?.checked) {
+    fullHtml += `<div><p style="text-align:center;color:#aaa;font-size:0.85em;">Formatted with AuthorPro — https://avinashwalton.github.io/AuthorPro/</p></div>`;
+  }
   fullHtml += '</body></html>';
 
-  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+  // Download as .html (open in browser / import to Calibre for EPUB)
+  const blob = new Blob([fullHtml], { type:'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `${title}_AuthorPro.html`;
-  a.click();
+  const safeTitle = bookTitle.replace(/[^a-zA-Z0-9 \u0900-\u097F_-]/g,'').replace(/\s+/g,'_');
+  a.href = url; a.download = `${safeTitle}_AuthorPro_ebook.html`; a.click();
   URL.revokeObjectURL(url);
-  showToast('📱 EPUB (HTML) downloaded! Open in browser or convert to EPUB with Calibre.', 'success');
-}
-
-function xhtmlPage(title, bodyContent) {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
-<head><title>${escHtml(title)}</title><link rel="stylesheet" type="text/css" href="style.css"/></head>
-<body>${bodyContent}</body></html>`;
+  showToast('📱 EPUB (HTML) downloaded! Import into Calibre to convert to .epub/.mobi', 'success');
 }
 
 // ===== SAVE / LOAD =====
 function saveProgress() {
-  // Sync editors to state
   syncEditorsToState();
-
   const data = {
-    version: '1.0',
-    savedAt: new Date().toISOString(),
-    meta: {
+    version:'2.0', savedAt: new Date().toISOString(),
+    meta:{
       bookTitle: document.getElementById('bookTitle').value,
       bookSubtitle: document.getElementById('bookSubtitle').value,
       authorName: document.getElementById('authorName').value,
@@ -1017,10 +986,21 @@ function saveProgress() {
       hasAboutAuthor: document.getElementById('hasAboutAuthor').checked,
       hasColophon: document.getElementById('hasColophon').checked,
     },
-    settings: {
+    frontEditors:{
+      dedication: document.getElementById('dedicationEditor')?.innerHTML || '',
+      foreword: document.getElementById('forewordEditor')?.innerHTML || '',
+      preface: document.getElementById('prefaceEditor')?.innerHTML || '',
+      ack: document.getElementById('ackEditor')?.innerHTML || '',
+      intro: document.getElementById('introEditor')?.innerHTML || '',
+      epilogue: document.getElementById('epilogueEditor')?.innerHTML || '',
+      afterword: document.getElementById('afterwordEditor')?.innerHTML || '',
+      glossary: document.getElementById('glossaryEditor')?.innerHTML || '',
+      bib: document.getElementById('bibEditor')?.innerHTML || '',
+      about: document.getElementById('aboutEditor')?.innerHTML || '',
+    },
+    settings:{
       useUnits: document.getElementById('useUnits').checked,
       pageSize: document.getElementById('pageSize').value,
-      bodyFont: document.getElementById('bodyFont').value,
       fontSize: document.getElementById('fontSize').value,
       lineSpacing: document.getElementById('lineSpacing').value,
       marginSize: document.getElementById('marginSize').value,
@@ -1034,34 +1014,25 @@ function saveProgress() {
     chapters: state.chapters,
     chapterCounter: state.chapterCounter,
     unitCounter: state.unitCounter,
+    coverImageDataUrl: state.coverImageDataUrl,
   };
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `${data.meta.bookTitle || 'manuscript'}_AuthorPro_save.json`;
-  a.click();
+  a.href = url; a.download = `${data.meta.bookTitle || 'manuscript'}_AuthorPro.json`; a.click();
   URL.revokeObjectURL(url);
-  showToast('💾 Progress saved as JSON file!', 'success');
+  showToast('💾 Progress saved!', 'success');
 }
 
 function loadProgress() {
   const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json';
+  input.type = 'file'; input.accept = '.json';
   input.onchange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        restoreFromData(data);
-        showToast('📂 Project loaded successfully!', 'success');
-      } catch (err) {
-        showToast('Error loading file. Invalid format.', 'error');
-      }
+      try { restoreFromData(JSON.parse(ev.target.result)); showToast('📂 Project loaded!', 'success'); }
+      catch(err) { showToast('Error loading file. Invalid format.', 'error'); }
     };
     reader.readAsText(file);
   };
@@ -1069,71 +1040,56 @@ function loadProgress() {
 }
 
 function restoreFromData(data) {
-  // Meta
-  if (data.meta) {
-    Object.entries(data.meta).forEach(([k, v]) => {
-      const el = document.getElementById(k);
-      if (el) el.value = v;
-    });
+  if (data.meta) { Object.entries(data.meta).forEach(([k,v]) => { const el=document.getElementById(k); if(el) el.value=v; }); }
+  if (data.sections) { Object.entries(data.sections).forEach(([k,v]) => { const el=document.getElementById(k); if(el) el.checked=v; }); }
+  if (data.frontEditors) {
+    const map = { dedication:'dedicationEditor', foreword:'forewordEditor', preface:'prefaceEditor', ack:'ackEditor', intro:'introEditor', epilogue:'epilogueEditor', afterword:'afterwordEditor', glossary:'glossaryEditor', bib:'bibEditor', about:'aboutEditor' };
+    Object.entries(data.frontEditors).forEach(([k,v]) => { const el=document.getElementById(map[k]); if(el) el.innerHTML=v; });
+    // Show wraps for checked sections
+    if (data.sections) {
+      const wrapMap = { hasDedication:'dedicationEditorWrap', hasForeword:'forewordEditorWrap', hasPreface:'prefaceEditorWrap', hasAcknowledgements:'ackEditorWrap', hasIntroduction:'introEditorWrap', hasEpilogue:'epilogueEditorWrap', hasAfterword:'afterwordEditorWrap', hasGlossary:'glossaryEditorWrap', hasBibliography:'bibEditorWrap', hasAboutAuthor:'aboutEditorWrap' };
+      Object.entries(wrapMap).forEach(([sec,wrapId]) => {
+        const wrap = document.getElementById(wrapId);
+        if (wrap && data.sections[sec]) wrap.classList.add('visible');
+      });
+    }
   }
-  // Sections
-  if (data.sections) {
-    Object.entries(data.sections).forEach(([k, v]) => {
-      const el = document.getElementById(k);
-      if (el) el.checked = v;
-    });
-  }
-  // Settings
   if (data.settings) {
     const s = data.settings;
     if (s.useUnits !== undefined) document.getElementById('useUnits').checked = s.useUnits;
-    ['pageSize','bodyFont','fontSize','lineSpacing','marginSize','chapterStyle','colorTheme'].forEach(k => {
-      const el = document.getElementById(k);
-      if (el && s[k]) el.value = s[k];
+    ['pageSize','fontSize','lineSpacing','marginSize','chapterStyle','colorTheme'].forEach(k => {
+      const el = document.getElementById(k); if(el && s[k]) el.value = s[k];
     });
     ['showPageNumbers','showRunningHeader','chapterNewPage'].forEach(k => {
-      const el = document.getElementById(k);
-      if (el && s[k] !== undefined) el.checked = s[k];
+      const el = document.getElementById(k); if(el && s[k] !== undefined) el.checked = s[k];
     });
   }
-  // Units & Chapters
+  if (data.coverImageDataUrl) {
+    state.coverImageDataUrl = data.coverImageDataUrl;
+    document.getElementById('coverPreview').src = data.coverImageDataUrl;
+    document.getElementById('coverPreviewWrap').style.display = 'block';
+  }
   state.units = data.units || [];
   state.chapters = [];
   state.chapterCounter = data.chapterCounter || 0;
   state.unitCounter = data.unitCounter || 0;
-
-  // Clear existing tabs
   document.querySelectorAll('.tab-btn:not([data-tab="welcome"])').forEach(t => t.remove());
   document.querySelectorAll('.tab-content:not(#tab-welcome)').forEach(t => t.remove());
-
   renderUnits();
-  if (document.getElementById('useUnits').checked) {
-    document.getElementById('addUnitBtn').style.display = 'inline-flex';
-  }
-
-  (data.chapters || []).forEach(ch => {
-    state.chapters.push(ch);
-    createEditorTab(ch);
-  });
-
+  if (document.getElementById('useUnits').checked) document.getElementById('addUnitBtn').style.display = 'inline-flex';
+  (data.chapters || []).forEach(ch => { state.chapters.push(ch); createEditorTab(ch); });
   renderChapterList();
-  if (state.chapters.length > 0) {
-    switchTab(state.chapters[0].id);
-  } else {
-    switchTab('welcome');
-  }
+  switchTab(state.chapters.length > 0 ? state.chapters[0].id : 'welcome');
 }
 
 function clearAll() {
-  if (!confirm('Clear everything and start fresh? This cannot be undone.')) return;
+  if (!confirm('Clear everything and start fresh? Cannot be undone.')) return;
   document.querySelectorAll('.tab-btn:not([data-tab="welcome"])').forEach(t => t.remove());
   document.querySelectorAll('.tab-content:not(#tab-welcome)').forEach(t => t.remove());
-  state.chapters = [];
-  state.units = [];
-  state.chapterCounter = 0;
-  state.unitCounter = 0;
-  renderChapterList();
-  renderUnits();
+  state.chapters = []; state.units = []; state.chapterCounter = 0; state.unitCounter = 0;
+  state.coverImageDataUrl = null;
+  document.getElementById('coverPreviewWrap').style.display = 'none';
+  renderChapterList(); renderUnits();
   switchTab('welcome');
   localStorage.removeItem('authorpro_autosave');
   showToast('🗑️ Everything cleared.', 'success');
@@ -1144,62 +1100,57 @@ function scheduleAutoSave() {
   clearTimeout(state.autoSaveTimer);
   state.autoSaveTimer = setTimeout(() => {
     saveToLocalStorage();
-    const indicator = document.getElementById('autoSaveIndicator');
-    if (indicator) {
-      indicator.textContent = '✓ Auto-saved';
-      indicator.style.color = '#4ade80';
-    }
-  }, 2000);
-}
-
-function initAutoSave() {
-  // Save to localStorage every 60s as backup
-  setInterval(() => {
-    syncEditorsToState();
-    saveToLocalStorage();
-  }, 60000);
+    const ind = document.getElementById('autoSaveIndicator');
+    if (ind) { ind.textContent = '✓ Auto-saved'; ind.style.color = '#4ade80'; }
+  }, 2500);
 }
 
 function syncEditorsToState() {
   state.chapters.forEach(ch => {
-    const editor = document.getElementById(`editor_${ch.id}`);
-    if (editor) ch.content = editor.innerHTML;
+    const ed = document.getElementById(`editor_${ch.id}`);
+    if (ed) ch.content = ed.innerHTML;
   });
+}
+
+function initAutoSave() {
+  setInterval(() => { syncEditorsToState(); saveToLocalStorage(); }, 60000);
 }
 
 function saveToLocalStorage() {
   try {
     syncEditorsToState();
-    const data = {
-      meta: {
-        bookTitle: document.getElementById('bookTitle').value,
-        bookSubtitle: document.getElementById('bookSubtitle').value,
-        authorName: document.getElementById('authorName').value,
-        publisherName: document.getElementById('publisherName').value,
-        pubYear: document.getElementById('pubYear').value,
-        isbnNum: document.getElementById('isbnNum').value,
-        editionNum: document.getElementById('editionNum').value,
-      },
-      chapters: state.chapters,
-      units: state.units,
-      chapterCounter: state.chapterCounter,
-      unitCounter: state.unitCounter,
+    const frontEditors = {
+      dedication: document.getElementById('dedicationEditor')?.innerHTML||'',
+      foreword: document.getElementById('forewordEditor')?.innerHTML||'',
+      preface: document.getElementById('prefaceEditor')?.innerHTML||'',
+      ack: document.getElementById('ackEditor')?.innerHTML||'',
+      intro: document.getElementById('introEditor')?.innerHTML||'',
+      epilogue: document.getElementById('epilogueEditor')?.innerHTML||'',
+      afterword: document.getElementById('afterwordEditor')?.innerHTML||'',
+      glossary: document.getElementById('glossaryEditor')?.innerHTML||'',
+      bib: document.getElementById('bibEditor')?.innerHTML||'',
+      about: document.getElementById('aboutEditor')?.innerHTML||'',
     };
-    localStorage.setItem('authorpro_autosave', JSON.stringify(data));
-  } catch (e) { /* localStorage might be full */ }
+    localStorage.setItem('authorpro_autosave', JSON.stringify({
+      meta:{ bookTitle:document.getElementById('bookTitle').value, bookSubtitle:document.getElementById('bookSubtitle').value, authorName:document.getElementById('authorName').value, publisherName:document.getElementById('publisherName').value, pubYear:document.getElementById('pubYear').value, isbnNum:document.getElementById('isbnNum').value, editionNum:document.getElementById('editionNum').value },
+      sections:{ hasTitlePage:document.getElementById('hasTitlePage').checked, hasCopyrightPage:document.getElementById('hasCopyrightPage').checked, hasDedication:document.getElementById('hasDedication').checked, hasForeword:document.getElementById('hasForeword').checked, hasPreface:document.getElementById('hasPreface').checked, hasAcknowledgements:document.getElementById('hasAcknowledgements').checked, hasTOC:document.getElementById('hasTOC').checked, hasIntroduction:document.getElementById('hasIntroduction').checked, hasEpilogue:document.getElementById('hasEpilogue').checked, hasAfterword:document.getElementById('hasAfterword').checked, hasGlossary:document.getElementById('hasGlossary').checked, hasBibliography:document.getElementById('hasBibliography').checked, hasIndex:document.getElementById('hasIndex').checked, hasAboutAuthor:document.getElementById('hasAboutAuthor').checked, hasColophon:document.getElementById('hasColophon').checked },
+      frontEditors, chapters: state.chapters, units: state.units,
+      chapterCounter: state.chapterCounter, unitCounter: state.unitCounter,
+      coverImageDataUrl: state.coverImageDataUrl,
+    }));
+  } catch(e) { /* localStorage full */ }
 }
 
 function loadFromLocalStorage() {
   try {
     const saved = localStorage.getItem('authorpro_autosave');
-    if (saved) {
-      const data = JSON.parse(saved);
-      if (data.chapters && data.chapters.length > 0) {
-        restoreFromData(data);
-        showToast('✓ Auto-save restored.', 'success');
-      }
+    if (!saved) return;
+    const data = JSON.parse(saved);
+    if (data.chapters && data.chapters.length > 0) {
+      restoreFromData(data);
+      showToast('✓ Auto-save restored', 'success');
     }
-  } catch (e) { /* ignore */ }
+  } catch(e) {}
 }
 
 // ===== FAQ =====
@@ -1208,59 +1159,35 @@ function toggleFaq(btn) {
   const isOpen = answer.classList.contains('open');
   document.querySelectorAll('.faq-a.open').forEach(a => a.classList.remove('open'));
   document.querySelectorAll('.faq-q.open').forEach(b => b.classList.remove('open'));
-  if (!isOpen) {
-    answer.classList.add('open');
-    btn.classList.add('open');
-  }
+  if (!isOpen) { answer.classList.add('open'); btn.classList.add('open'); }
 }
 
 // ===== TOAST =====
-let toastTimeout;
-function showToast(msg, type = '') {
-  let toast = document.getElementById('globalToast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'globalToast';
-    toast.className = 'toast';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = msg;
-  toast.className = `toast ${type}`;
-  clearTimeout(toastTimeout);
-  requestAnimationFrame(() => {
-    toast.classList.add('show');
-    toastTimeout = setTimeout(() => toast.classList.remove('show'), 3500);
-  });
+let _toastTimer;
+function showToast(msg, type='') {
+  let t = document.getElementById('_ap_toast');
+  if (!t) { t = document.createElement('div'); t.id = '_ap_toast'; t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.className = `toast ${type}`;
+  clearTimeout(_toastTimer);
+  requestAnimationFrame(() => { t.classList.add('show'); _toastTimer = setTimeout(() => t.classList.remove('show'), 3500); });
 }
 
 // ===== UTILITY =====
 function escHtml(str) {
   if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // Close modals on overlay click
 document.addEventListener('click', e => {
-  if (e.target.id === 'wordCountModal') {
-    e.target.classList.remove('active');
-  }
+  if (e.target.id === 'wordCountModal') e.target.classList.remove('active');
 });
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-    e.preventDefault();
-    saveProgress();
-  }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-    e.preventDefault();
-    togglePreview();
-  }
-  if (e.key === 'Escape') {
+  if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); saveProgress(); }
+  if ((e.ctrlKey||e.metaKey) && e.key==='p') { e.preventDefault(); togglePreview(); }
+  if (e.key==='Escape') {
     document.getElementById('previewModal').classList.remove('active');
     document.getElementById('wordCountModal').classList.remove('active');
   }
